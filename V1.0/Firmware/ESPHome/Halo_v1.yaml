@@ -45,6 +45,29 @@ captive_portal:
 logger:
   level: DEBUG
 
+globals:
+  - id: cycleCounter
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: co2_light_active
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: aqi_light_active
+    type: bool
+    restore_value: false
+    initial_value: 'true'  # Default AQI active when CO2 is inactive        
+
+switch:
+  - platform: template
+    name: "Startup Light Blink"
+    id: startup_light_blink
+    icon: mdi:lightbulb
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+    entity_category: "config"
+
 interval:
   - interval: 10s
     then:    
@@ -62,9 +85,127 @@ interval:
               id: wifi_stat
               text_color: my_red
 
+  - interval: 20s
+    then:
+      - lambda: |-
+          id(co2_light_active) = true;  // Activate light updates
+      - if:
+          condition:
+            lambda: "return id(co2).state <= 600;"
+          then:
+            - light.turn_on:
+                id: rgb_light
+                effect: "Green Halo Pulse"            
+
+          else:
+            - if:
+                condition:
+                  lambda: "return id(co2).state <= 1000;"
+                then:
+                  - light.turn_on:
+                      id: rgb_light
+                      effect: "Yellow Halo Pulse"  
+                else:
+                  - if:
+                      condition:
+                        lambda: "return id(co2).state <= 1500;"
+                      then:
+                        - light.turn_on:
+                            id: rgb_light
+                            effect: "Orange Halo Pulse"  
+                      else:
+                        - light.turn_on:
+                            id: rgb_light
+                            effect: "Red Halo Pulse"  
+      # - delay: 2s
+      # - light.turn_off:
+      #     id: rgb_light
+      - lambda: |-
+          id(co2_light_active) = false;  // Deactivate light updates
+
+  - interval: 5s
+    then:
+      - if:
+          condition:
+            lambda: "return !id(co2_light_active);"  # Skip AQI if CO2 is active
+          then:
+            - if:
+                condition:
+                  lambda: "return id(pm_2_5).state <= 50;"
+                then:
+                  - light.turn_on:
+                      id: rgb_light
+                      effect: "Green Halo"
+                else:
+                  - if:
+                      condition:
+                        lambda: "return id(pm_2_5).state <= 100;"
+                      then:
+                        - light.turn_on:
+                            id: rgb_light
+                            effect: "Yellow Halo"
+                      else:
+                        - if:
+                            condition:
+                              lambda: "return id(pm_2_5).state <= 150;"
+                            then:
+                              - light.turn_on:
+                                  id: rgb_light
+                                  effect: "Orange Halo"
+                            else:
+                              - if:
+                                  condition:
+                                    lambda: "return id(pm_2_5).state <= 200;"
+                                  then:
+                                    - light.turn_on:
+                                        id: rgb_light
+                                        effect: "Red Halo"
+                                  else:
+                                    - if:
+                                        condition:
+                                          lambda: "return id(pm_2_5).state <= 300;"
+                                        then:
+                                          - light.turn_on:
+                                              id: rgb_light
+                                              effect: "Purple Halo"
+                                        else:
+                                          - light.turn_on:
+                                              id: rgb_light
+                                              effect: "Maroon Halo"                        
+
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            - binary_sensor.is_off: ink_ha_connected
+            - lambda: 'return id(cycleCounter) < 30;'
+            - switch.is_on: startup_light_blink
+
+          then:
+            - light.turn_on:
+                id: rgb_light
+                effect: "Rainbow Effect With Custom Values"
+            - lambda: 'id(cycleCounter) += 1;'
+
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            - binary_sensor.is_off: ink_ha_connected
+            - lambda: 'return id(cycleCounter) > 30;'
+            - lambda: 'return id(cycleCounter) < 31;'
+            - switch.is_on: startup_light_blink
+
+          then:
+            - light.turn_off:
+                id: rgb_light
+            - lambda: 'id(cycleCounter) += 1;'              
+
 api:
-  encryption:
-    key: "SqdGIj+pj35fGD5MMRLFaN8eD9DN3ig0j0iABROrqt8="
+  on_client_connected:
+      - delay: 1s
+      - light.turn_off: rgb_light
+      - lambda: 'id(cycleCounter) = 30;'    
   services:
     #Co2 Calibration Service
     - service: calibrate_co2_value
@@ -225,6 +366,11 @@ number:
     step: 0.1
     mode: box
 
+binary_sensor:
+  - platform: status
+    name: Online
+    id: ink_ha_connected    
+
 sensor:
   - platform: uptime
     name: Uptime
@@ -256,7 +402,7 @@ sensor:
               then:
                 - lvgl.label.update:
                     id: co2_value
-                    text_color: my_green
+                    text_color: my_green                     
               else:
                 - if:
                     condition:
@@ -264,7 +410,7 @@ sensor:
                     then:
                       - lvgl.label.update:
                           id: co2_value
-                          text_color: my_yellow
+                          text_color: my_yellow                         
                     else:
                       - if:
                           condition:
@@ -272,11 +418,11 @@ sensor:
                           then:
                             - lvgl.label.update:
                                 id: co2_value
-                                text_color: my_orange
+                                text_color: my_orange                                 
                           else:
                             - lvgl.label.update:
                                 id: co2_value
-                                text_color: my_red                                                
+                                text_color: my_red                                                                              
     automatic_self_calibration: false
     update_interval: 10s
     measurement_mode: "periodic"
@@ -827,7 +973,100 @@ light:
       - addressable_rainbow:
           name: Rainbow Effect With Custom Values
           speed: 10
-          width: 50          
+          width: 50
+      - addressable_color_wipe:
+          name: "Green Halo"
+          colors:
+            - red: 0%
+              green: 100%
+              blue: 0%
+              num_leds: 11
+              gradient: true                   
+      - addressable_color_wipe:
+          name: "Yellow Halo"
+          colors:
+            - red: 100%
+              green: 100%
+              blue: 0%
+              num_leds: 11
+              gradient: true
+      - addressable_color_wipe:
+          name: "Orange Halo"
+          colors:
+            - red: 100%
+              green: 65%
+              blue: 0%
+              num_leds: 11
+              gradient: true                      
+      - addressable_color_wipe:
+          name: "Red Halo"
+          colors:
+            - red: 100%
+              green: 0%
+              blue: 0%
+              num_leds: 11
+              gradient: true
+      - addressable_color_wipe:
+          name: "Purple Halo"
+          colors:
+            - red: 50%
+              green: 0%
+              blue: 50%
+              num_leds: 11
+              gradient: true
+      - addressable_color_wipe:
+          name: "Maroon Halo"
+          colors:
+            - red: 50%
+              green: 0%
+              blue: 0%
+              num_leds: 11
+              gradient: true
+
+      - strobe:
+          name: "Green Halo Pulse"
+          colors:
+            - state: true
+              brightness: 100%
+              red: 100%
+              green: 0%
+              blue: 0%
+              duration: 500ms
+            - state: false
+              duration: 250ms
+      - strobe:
+          name: "Yellow Halo Pulse"
+          colors:
+            - state: true
+              brightness: 100%
+              red: 100%
+              green: 100%
+              blue: 0%
+              duration: 500ms
+            - state: false
+              duration: 250ms 
+      - strobe:
+          name: "Orange Halo Pulse"
+          colors:
+            - state: true
+              brightness: 100%
+              red: 100%
+              green: 65%
+              blue: 0%
+              duration: 500ms
+            - state: false
+              duration: 250ms                   
+      - strobe:
+          name: "Red Halo Pulse"
+          colors:
+            - state: true
+              brightness: 100%
+              red: 100%
+              green: 0%
+              blue: 0%
+              duration: 500ms
+            - state: false
+              duration: 250ms 
 
 lvgl:
   displays:
