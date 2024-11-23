@@ -1359,7 +1359,7 @@ lvgl:
             long_mode: WRAP
             x: -2
             y: 12
-            text: "PPB"                     
+            text: "IDX"                     
         - line:
             points:
               - 0, 352
