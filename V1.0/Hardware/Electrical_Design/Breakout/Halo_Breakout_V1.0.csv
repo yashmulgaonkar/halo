@@ -1,0 +1,6 @@
+Designator,Quantity,Manufacturer,Manufacturer Part Number,Description
+"C1, C3",2,YAGEO,CC0603ZRY5V9BB104,"0.1 µF -20%, +80% 50V Ceramic Capacitor Y5V (F) 0603 (1608 Metric)"
+"C2, C4",2,YAGEO,CC0603KRX5R8BB105,1 µF ±10% 25V Ceramic Capacitor X5R 0603 (1608 Metric)
+J1,1,JST Sales America Inc.,SM07B-GHS-TB,"Connector Header Surface Mount, Right Angle 7 position 0.049"" (1.25mm)"
+J2,1,JST Sales America Inc.,BM04B-SRSS-TBT,"Connector Header Surface Mount 4 position 0.039"" (1.00mm)"
+J3,1,Amphenol ICC (FCI),20021311-00030T4LF,"30 Position Receptacle Connector 0.050"" (1.27mm) Through Hole Gold"
