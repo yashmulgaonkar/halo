@@ -1,3 +1,5 @@
+![Halo_v1](assets/Halo_v1.JPG)
+
 # HALO: The Air Quality Sensor That Smells Trouble Before You Do
 
 Welcome to HALO — your hilariously over-engineered, open-source buddy who sniffs the air so you don’t have to. Designed for folks who care about the air they breathe but also want a sensor with personality, HALO operates on WiFi via ESPHome, which means no creepy cloud subscriptions or hidden fees. It’s just you, HALO, and your dusty air duking it out together.
