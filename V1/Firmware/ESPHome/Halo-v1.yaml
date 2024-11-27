@@ -30,7 +30,7 @@ esp32:
     type: esp-idf
 
 dashboard_import:
-  package_import_url: github://yashmulgaonkar/halo/V1/Firmware/ESPHome/Halo-v1.yaml
+  package_import_url: github://yashmulgaonkar/halo/V1/Firmware/ESPHome/Halo-v1.yaml@main
   import_full_config: false
 
 external_components:
