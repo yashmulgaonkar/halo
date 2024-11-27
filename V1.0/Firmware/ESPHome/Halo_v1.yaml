@@ -8,6 +8,11 @@ esphome:
     board_build.f_flash: 80000000L
     board_build.f_cpu: 240000000L
 
+  project:
+    name: "yashmulgaonkar.Halo"
+    version: "${version}"
+
+
 psram:
   mode: octal
   speed: 120MHz
@@ -17,6 +22,10 @@ esp32:
   flash_size: 16MB
   framework:
     type: esp-idf
+
+dashboard_import:
+  package_import_url: github://yashmulgaonkar/halo/blob/main/V1.0/Firmware/ESPHome/Halo_v1.yaml
+  import_full_config: false
 
 external_components:
   - source: github://yashmulgaonkar/esphome-components
@@ -265,8 +274,11 @@ web_server:
   port: 80
 
 image:
-  - file: https://yashmulgaonkar.com/YM.jpg
+  - file: https://yashmulgaonkar.com/YM.png
     id: ym_logo
+    resize: 25x25
+    type: RGB565
+    use_transparency: true
 
 color:
   - id: my_red
@@ -1083,7 +1095,7 @@ lvgl:
             id: ym_image          
             src: ym_logo
             align: CENTER
-            x: 0
+            x: 80
             y: -309
         - label:
             id: timeVal
