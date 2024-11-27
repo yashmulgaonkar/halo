@@ -1,11 +1,11 @@
 #Define Project
 substitutions:
   name: halo
-  version: "24.11.26.3"
+  version: "24.11.26.5"
   device_description: ${name} - v${version}.
   
 esphome:
-  name: halo_v1
+  name: halo-v1
   friendly_name: Halo Air Quality Sensor
   platformio_options:
     upload_speed: 921600
@@ -15,7 +15,7 @@ esphome:
     board_build.f_cpu: 240000000L
 
   project:
-    name: "yashmulgaonkar.Halo"
+    name: "yashmulgaonkar.Halo-v1"
     version: "${version}"
 
 
@@ -28,6 +28,10 @@ esp32:
   flash_size: 16MB
   framework:
     type: esp-idf
+
+ota:
+  - platform: esphome
+    id: ota_default
 
 dashboard_import:
   package_import_url: github://yashmulgaonkar/halo/V1/Firmware/ESPHome/Halo-v1.yaml@main
@@ -233,11 +237,6 @@ api:
     - service: sen55_clean
       then:
         - sen5x.start_fan_autoclean: sen55    
-
-ota:
-  - platform: esphome
-    password: "halo"
-    id: ota_default
 
 i2c:
   sda: 15
