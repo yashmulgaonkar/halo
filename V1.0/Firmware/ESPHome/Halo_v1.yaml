@@ -1,3 +1,9 @@
+#Define Project
+substitutions:
+  name: halo
+  version: "2024.11.26"
+  device_description: ${name} - v${version}.
+  
 esphome:
   name: halo_v1
   friendly_name: Halo Air Quality Sensor
