@@ -35,7 +35,7 @@ ota:
 
 dashboard_import:
   package_import_url: github://yashmulgaonkar/halo/V1/Firmware/ESPHome/Halo-v1.yaml@main
-  import_full_config: false
+  import_full_config: true
 
 external_components:
   - source: github://yashmulgaonkar/esphome-components
@@ -150,7 +150,7 @@ interval:
           then:
             - if:
                 condition:
-                  lambda: "return id(pm_2_5).state <= 50;"
+                  lambda: "return id(pm_2_5).state <= 15.4;"
                 then:
                   - light.turn_on:
                       id: rgb_light
@@ -158,7 +158,7 @@ interval:
                 else:
                   - if:
                       condition:
-                        lambda: "return id(pm_2_5).state <= 100;"
+                        lambda: "return id(pm_2_5).state <= 40.4;"
                       then:
                         - light.turn_on:
                             id: rgb_light
@@ -166,7 +166,7 @@ interval:
                       else:
                         - if:
                             condition:
-                              lambda: "return id(pm_2_5).state <= 150;"
+                              lambda: "return id(pm_2_5).state <= 65.4;"
                             then:
                               - light.turn_on:
                                   id: rgb_light
@@ -174,7 +174,7 @@ interval:
                             else:
                               - if:
                                   condition:
-                                    lambda: "return id(pm_2_5).state <= 200;"
+                                    lambda: "return id(pm_2_5).state <= 150.4;"
                                   then:
                                     - light.turn_on:
                                         id: rgb_light
@@ -182,7 +182,7 @@ interval:
                                   else:
                                     - if:
                                         condition:
-                                          lambda: "return id(pm_2_5).state <= 300;"
+                                          lambda: "return id(pm_2_5).state <= 250.4;"
                                         then:
                                           - light.turn_on:
                                               id: rgb_light
@@ -239,8 +239,8 @@ api:
         - sen5x.start_fan_autoclean: sen55    
 
 i2c:
-  sda: 15
-  scl: 10
+  sda: 9
+  scl: 48
   id: lily_i2c
   
 display:
@@ -974,7 +974,7 @@ light:
   - platform: esp32_rmt_led_strip
     id: rgb_light
     name: "Halo"
-    pin: GPIO43
+    pin: GPIO47
     rmt_channel: 0
     default_transition_length: 0s
     chipset: WS2812
@@ -1045,8 +1045,8 @@ light:
           colors:
             - state: true
               brightness: 100%
-              red: 100%
-              green: 0%
+              red: 0%
+              green: 100%
               blue: 0%
               duration: 500ms
             - state: false
