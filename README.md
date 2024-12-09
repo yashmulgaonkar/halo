@@ -95,7 +95,7 @@ Because life’s too short for bad air and boring gadgets. HALO makes clean air 
 We love tinkerers, dreamers, and anyone who thinks, “You know what HALO really needs? A coffee maker attachment.” That’s why we’ve shared HALO’s software and CAD files with the world. Dive into our GitHub, unleash your inner mad scientist, and share your creations on Discord. Who knows? Your idea might just inspire HALO 2.0.
 
 - **Build Instructions:** [https://github.com/yashmulgaonkar/halo/wiki](https://github.com/yashmulgaonkar/halo/wiki)
-- **Discord:** [HALO Community](https://discord.com/channels/1309649507310506115/1309649802811670669)
+- **Discord:** [HALO Community](https://discord.gg/7RNKbRRm)
 
 ---
 
