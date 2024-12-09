@@ -100,3 +100,12 @@ We love tinkerers, dreamers, and anyone who thinks, “You know what HALO really
 ---
 
 <div align="center"><strong>HALO: The sensor you didn’t know you needed — but now can’t live without.</strong></div>
+
+---
+<p align="center">
+  <a href="https://buymeacoffee.com/yashmulgaonkar" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 35px;">
+  </a>
+</p>
+
+---
