@@ -1,5 +1,11 @@
+#Define Project
+substitutions:
+  name: halo
+  version: "24.11.26.5"
+  device_description: ${name} - v${version}.
+  
 esphome:
-  name: halo_v1
+  name: halo-v1
   friendly_name: Halo Air Quality Sensor
   platformio_options:
     upload_speed: 921600
@@ -7,6 +13,11 @@ esphome:
     board_build.flash_mode: dio
     board_build.f_flash: 80000000L
     board_build.f_cpu: 240000000L
+
+  project:
+    name: "yashmulgaonkar.Halo-v1"
+    version: "${version}"
+
 
 psram:
   mode: octal
@@ -17,6 +28,14 @@ esp32:
   flash_size: 16MB
   framework:
     type: esp-idf
+
+ota:
+  - platform: esphome
+    id: ota_default
+
+dashboard_import:
+  package_import_url: github://yashmulgaonkar/halo/V1/Firmware/ESPHome/Halo-v1.yaml@main
+  import_full_config: true
 
 external_components:
   - source: github://yashmulgaonkar/esphome-components
@@ -49,15 +68,7 @@ globals:
   - id: cycleCounter
     type: int
     restore_value: no
-    initial_value: '0'
-  - id: co2_light_active
-    type: bool
-    restore_value: false
-    initial_value: 'false'
-  - id: aqi_light_active
-    type: bool
-    restore_value: false
-    initial_value: 'true'  # Default AQI active when CO2 is inactive        
+    initial_value: '0' 
 
 switch:
   - platform: template
@@ -84,95 +95,7 @@ interval:
           - lvgl.widget.update:
               id: wifi_stat
               text_color: my_red
-
-  - interval: 20s
-    then:
-      - lambda: |-
-          id(co2_light_active) = true;  // Activate light updates
-      - if:
-          condition:
-            lambda: "return id(co2).state <= 600;"
-          then:
-            - light.turn_on:
-                id: rgb_light
-                effect: "Green Halo Pulse"            
-
-          else:
-            - if:
-                condition:
-                  lambda: "return id(co2).state <= 1000;"
-                then:
-                  - light.turn_on:
-                      id: rgb_light
-                      effect: "Yellow Halo Pulse"  
-                else:
-                  - if:
-                      condition:
-                        lambda: "return id(co2).state <= 1500;"
-                      then:
-                        - light.turn_on:
-                            id: rgb_light
-                            effect: "Orange Halo Pulse"  
-                      else:
-                        - light.turn_on:
-                            id: rgb_light
-                            effect: "Red Halo Pulse"  
-      # - delay: 2s
-      # - light.turn_off:
-      #     id: rgb_light
-      - lambda: |-
-          id(co2_light_active) = false;  // Deactivate light updates
-
-  - interval: 5s
-    then:
-      - if:
-          condition:
-            lambda: "return !id(co2_light_active);"  # Skip AQI if CO2 is active
-          then:
-            - if:
-                condition:
-                  lambda: "return id(pm_2_5).state <= 50;"
-                then:
-                  - light.turn_on:
-                      id: rgb_light
-                      effect: "Green Halo"
-                else:
-                  - if:
-                      condition:
-                        lambda: "return id(pm_2_5).state <= 100;"
-                      then:
-                        - light.turn_on:
-                            id: rgb_light
-                            effect: "Yellow Halo"
-                      else:
-                        - if:
-                            condition:
-                              lambda: "return id(pm_2_5).state <= 150;"
-                            then:
-                              - light.turn_on:
-                                  id: rgb_light
-                                  effect: "Orange Halo"
-                            else:
-                              - if:
-                                  condition:
-                                    lambda: "return id(pm_2_5).state <= 200;"
-                                  then:
-                                    - light.turn_on:
-                                        id: rgb_light
-                                        effect: "Red Halo"
-                                  else:
-                                    - if:
-                                        condition:
-                                          lambda: "return id(pm_2_5).state <= 300;"
-                                        then:
-                                          - light.turn_on:
-                                              id: rgb_light
-                                              effect: "Purple Halo"
-                                        else:
-                                          - light.turn_on:
-                                              id: rgb_light
-                                              effect: "Maroon Halo"                        
-
+              
   - interval: 1s
     then:
       - if:
@@ -219,14 +142,9 @@ api:
       then:
         - sen5x.start_fan_autoclean: sen55    
 
-ota:
-  - platform: esphome
-    password: "halo"
-    id: ota_default
-
 i2c:
-  sda: 15
-  scl: 10
+  sda: 9
+  scl: 48
   id: lily_i2c
   
 display:
@@ -265,8 +183,11 @@ web_server:
   port: 80
 
 image:
-  - file: https://yashmulgaonkar.com/YM.jpg
+  - file: https://yashmulgaonkar.com/YM.png
     id: ym_logo
+    resize: 25x25
+    type: RGB565
+    use_transparency: true
 
 color:
   - id: my_red
@@ -315,12 +236,7 @@ time:
      - 1.pool.ntp.org
      - 2.pool.ntp.org
     on_time_sync:
-      - script.execute: time_update
-    on_time:
-      - minutes: '*'
-        seconds: 0
-        then:
-          - script.execute: time_update
+      - script.execute: time_update    
 
 script:
   - id: time_update
@@ -347,7 +263,7 @@ number:
     min_value: -70.0
     max_value: 70.0
     entity_category: "CONFIG"
-    unit_of_measurement: "°C"
+    unit_of_measurement: "°F"
     optimistic: true
     update_interval: never
     step: 0.1
@@ -658,6 +574,10 @@ sensor:
     i2c_id: lily_i2c
     temperature:
       name: "BME280 Temperature"
+      oversampling: 2x
+      # filters:
+      #   - lambda: |-
+      #       return x;  
     pressure:
       name: "BME280 Pressure"
       id: bme280pressure
@@ -781,17 +701,17 @@ sensor:
       name: "SEN55 Temperature"
       accuracy_decimals: 1
       filters:
-        # - lambda: return x - id(sen55_temperature_offset).state;
-        - lambda: |-
-            float celsius = x - id(sen55_temperature_offset).state;
-            return (celsius * 9.0 / 5.0) + 32.0;        
+        - lambda: return x - id(sen55_temperature_offset).state;
+        # - lambda: |-
+        #     float celsius = x - id(sen55_temperature_offset).state;
+        #     return (celsius * 9.0 / 5.0) + 32.0;        
       on_value:
         then:
           - lvgl.label.update:
               id: temperature_value
               text: !lambda |-
                 static char buffer[10];
-                snprintf(buffer, sizeof(buffer), "%.01f", x);
+                snprintf(buffer, sizeof(buffer), "%.01f", ((x - id(sen55_temperature_offset).state)* 9.0 / 5.0) + 32.0);
                 return buffer;
           - if:
               condition:
@@ -957,7 +877,7 @@ light:
   - platform: esp32_rmt_led_strip
     id: rgb_light
     name: "Halo"
-    pin: GPIO43
+    pin: GPIO47
     rmt_channel: 0
     default_transition_length: 0s
     chipset: WS2812
@@ -974,99 +894,6 @@ light:
           name: Rainbow Effect With Custom Values
           speed: 10
           width: 50
-      - addressable_color_wipe:
-          name: "Green Halo"
-          colors:
-            - red: 0%
-              green: 100%
-              blue: 0%
-              num_leds: 11
-              gradient: true                   
-      - addressable_color_wipe:
-          name: "Yellow Halo"
-          colors:
-            - red: 100%
-              green: 100%
-              blue: 0%
-              num_leds: 11
-              gradient: true
-      - addressable_color_wipe:
-          name: "Orange Halo"
-          colors:
-            - red: 100%
-              green: 65%
-              blue: 0%
-              num_leds: 11
-              gradient: true                      
-      - addressable_color_wipe:
-          name: "Red Halo"
-          colors:
-            - red: 100%
-              green: 0%
-              blue: 0%
-              num_leds: 11
-              gradient: true
-      - addressable_color_wipe:
-          name: "Purple Halo"
-          colors:
-            - red: 50%
-              green: 0%
-              blue: 50%
-              num_leds: 11
-              gradient: true
-      - addressable_color_wipe:
-          name: "Maroon Halo"
-          colors:
-            - red: 50%
-              green: 0%
-              blue: 0%
-              num_leds: 11
-              gradient: true
-
-      - strobe:
-          name: "Green Halo Pulse"
-          colors:
-            - state: true
-              brightness: 100%
-              red: 100%
-              green: 0%
-              blue: 0%
-              duration: 500ms
-            - state: false
-              duration: 250ms
-      - strobe:
-          name: "Yellow Halo Pulse"
-          colors:
-            - state: true
-              brightness: 100%
-              red: 100%
-              green: 100%
-              blue: 0%
-              duration: 500ms
-            - state: false
-              duration: 250ms 
-      - strobe:
-          name: "Orange Halo Pulse"
-          colors:
-            - state: true
-              brightness: 100%
-              red: 100%
-              green: 65%
-              blue: 0%
-              duration: 500ms
-            - state: false
-              duration: 250ms                   
-      - strobe:
-          name: "Red Halo Pulse"
-          colors:
-            - state: true
-              brightness: 100%
-              red: 100%
-              green: 0%
-              blue: 0%
-              duration: 500ms
-            - state: false
-              duration: 250ms 
 
 lvgl:
   displays:
@@ -1083,7 +910,7 @@ lvgl:
             id: ym_image          
             src: ym_logo
             align: CENTER
-            x: 0
+            x: 80
             y: -309
         - label:
             id: timeVal
@@ -1359,7 +1186,7 @@ lvgl:
             long_mode: WRAP
             x: -2
             y: 12
-            text: "PPB"                     
+            text: "IDX"                     
         - line:
             points:
               - 0, 352
@@ -1599,10 +1426,3 @@ lvgl:
             x: -2
             y: 299
             text: "%"
-
-# I2C device found at address 0x3B  ! Touchscreen
-# I2C device found at address 0x62  ! SCD41
-# I2C device found at address 0x69  ! sen54
-# I2C device found at address 0x6A  ! LiPo Charger
-# I2C device found at address 0x75  ! MICS-4514
-# I2C device found at address 0x77  ! BME280
