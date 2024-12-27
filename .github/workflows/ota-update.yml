@@ -1,0 +1,148 @@
+name: Build and Release Halo Firmware
+
+env:
+  DEVICE_NAME: halo
+  RELEASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/latest
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build and Release Firmware
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set uppercase DEVICE_NAME
+        run: |
+          echo "UPPERCASE_DEVICE_NAME=$(echo $DEVICE_NAME | tr '[:lower:]' '[:upper:]')" >> $GITHUB_ENV
+
+      - name: Build Firmware
+        uses: esphome/build-action@v3.0.0
+        id: esphome-build
+        with:
+          yaml_file: Firmware/ESPHome/${{ env.UPPERCASE_DEVICE_NAME }}-v1.yaml
+          version: 'latest'
+          cache: true
+
+      - name: Read version from YAML file
+        id: read_version
+        run: |
+          version=$(awk '/substitutions:/ {found=1} found && /version:/ {print $2; exit}' Firmware/ESPHome/${{ env.UPPERCASE_DEVICE_NAME }}-v1.yaml | tr -d '"')
+          echo "project_version=$version" >> $GITHUB_ENV
+
+      - name: Move generated files to output
+        run: |
+          mkdir -p output
+          mv ${{ steps.esphome-build.outputs.name }}/* output/
+          echo ${{ steps.esphome-build.outputs.version }} > output/version
+          # Extract MD5 checksum of firmware.ota.bin
+          MD5_CHECKSUM=$(jq -r '.ota.md5' output/manifest.json)
+          echo "MD5_CHECKSUM=$MD5_CHECKSUM" >> $GITHUB_ENV
+
+          # Create new manifest.json with jq
+          jq -n --arg name "${{ env.DEVICE_NAME }}" \
+                 --arg version "${{ env.project_version }}" \
+                 --arg md5 "$MD5_CHECKSUM" \
+                 '{name: $name, version: $version, home_assistant_domain: "esphome", new_install_prompt_erase: false, builds: [{chipFamily: "ESP32-S3", parts: [{path: "halo-${{ env.DEVICE_NAME }}-esp32s3.factory.bin", offset: 0}], ota: {path: "halo-${{ env.DEVICE_NAME }}-esp32s3.ota.bin", md5: $md5}}]}' > output/manifest.json
+
+      - uses: actions/upload-artifact@v4.3.3
+        with:
+          path: output/
+          retention-days: 1
+
+      - name: Collect merge commits
+        id: collect_commits
+        run: |
+          MERGE_COMMITS=$(git log --merges --pretty=format:"%h %s" $(git describe --tags --abbrev=0 @^)..@)
+          echo "MERGE_COMMITS=$MERGE_COMMITS" >> $GITHUB_ENV
+
+      - name: Create Release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+        with:
+          tag_name: ${{ env.project_version }}
+          release_name: "Release ${{ env.project_version }}"
+          body: |
+            ## What's Changed
+            - Firmware version: `${{ env.project_version }}`
+            - Merge commits:
+            ```
+            ${{ env.MERGE_COMMITS }}
+            ```
+
+          draft: false
+          prerelease: false
+
+      - name: Upload firmware.factory.bin to Release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: output/halo-${{ env.DEVICE_NAME }}-esp32s3.factory.bin
+          asset_name: halo-${{ env.DEVICE_NAME }}-esp32s3.factory.bin
+          asset_content_type: application/octet-stream
+
+      - name: Upload firmware.ota.bin to Release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: output/halo-${{ env.DEVICE_NAME }}-esp32s3.ota.bin
+          asset_name: halo-${{ env.DEVICE_NAME }}-esp32s3.ota.bin
+          asset_content_type: application/octet-stream
+
+      - name: Upload manifest.json to Release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: output/manifest.json
+          asset_name: manifest.json
+          asset_content_type: application/octet-stream
+
+  prep:
+    name: Consolidate Firmware
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4.1.7
+        with:
+          path: output
+      - run: cp -R static/* output/
+      - uses: actions/upload-pages-artifact@v3.0.1
+        with:
+          path: output
+          retention-days: 1
+
+  deploy:
+    if: contains(fromJSON('["workflow_dispatch", "push", "schedule"]'), github.event_name) && github.ref == 'refs/heads/main'
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: prep
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4.0.5
