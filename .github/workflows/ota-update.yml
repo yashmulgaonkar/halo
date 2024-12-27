@@ -87,8 +87,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: output/halo-${{ env.DEVICE_NAME }}-esp32s3.factory.bin
-          asset_name: halo-${{ env.DEVICE_NAME }}-esp32s3.factory.bin
+          asset_path: output/halo-v1-esp32s3.factory.bin
+          asset_name: halo-v1-esp32s3.factory.bin
           asset_content_type: application/octet-stream
 
       - name: Upload firmware.ota.bin to Release
@@ -98,8 +98,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: output/halo-${{ env.DEVICE_NAME }}-esp32s3.ota.bin
-          asset_name: halo-${{ env.DEVICE_NAME }}-esp32s3.ota.bin
+          asset_path: output/halo-v1-esp32s3.ota.bin
+          asset_name: halo-v1-esp32s3.ota.bin
           asset_content_type: application/octet-stream
 
       - name: Upload manifest.json to Release
