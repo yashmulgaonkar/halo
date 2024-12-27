@@ -24,14 +24,14 @@ jobs:
         uses: esphome/build-action@v3.0.0
         id: esphome-build
         with:
-          yaml_file: V1/Firmware/ESPHome/${{ env.UPPERCASE_DEVICE_NAME }}-v1.yaml
+          yaml_file: Firmware/ESPHome/${{ env.UPPERCASE_DEVICE_NAME }}-v1.yaml
           version: 'latest'
           cache: true
 
       - name: Read version from YAML file
         id: read_version
         run: |
-          version=$(awk '/substitutions:/ {found=1} found && /version:/ {print $2; exit}' V1/Firmware/ESPHome/${{ env.UPPERCASE_DEVICE_NAME }}-v1.yaml | tr -d '"')
+          version=$(awk '/substitutions:/ {found=1} found && /version:/ {print $2; exit}' Firmware/ESPHome/${{ env.UPPERCASE_DEVICE_NAME }}-v1.yaml | tr -d '"')
           echo "project_version=$version" >> $GITHUB_ENV
 
       - name: Move generated files to output
