@@ -123,7 +123,7 @@ jobs:
       - uses: actions/download-artifact@v4.1.7
         with:
           path: output
-      # - run: cp -R static/* output/
+      - run: cp -R static/* output/
       - uses: actions/upload-pages-artifact@v3.0.1
         with:
           path: output
