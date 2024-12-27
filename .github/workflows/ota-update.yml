@@ -47,7 +47,7 @@ jobs:
           jq -n --arg name "${{ env.DEVICE_NAME }}" \
                  --arg version "${{ env.project_version }}" \
                  --arg md5 "$MD5_CHECKSUM" \
-                 '{name: $name, version: $version, home_assistant_domain: "esphome", new_install_prompt_erase: false, builds: [{chipFamily: "ESP32-S3", parts: [{path: "halo-${{ env.DEVICE_NAME }}-esp32s3.factory.bin", offset: 0}], ota: {path: "halo-${{ env.DEVICE_NAME }}-esp32s3.ota.bin", md5: $md5}}]}' > output/manifest.json
+                 '{name: $name, version: $version, home_assistant_domain: "esphome", new_install_prompt_erase: false, builds: [{chipFamily: "ESP32-S3", parts: [{path: "halo-v1-esp32s3.factory.bin", offset: 0}], ota: {path: "halo-v1-esp32s3.ota.bin", md5: $md5}}]}' > output/manifest.json
 
       - uses: actions/upload-artifact@v4.3.3
         with:
