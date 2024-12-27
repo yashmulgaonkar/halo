@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "24.12.26.2"
+  version: "24.12.27.1"
   device_description: ${name} - v${version}.
   
 esphome:
