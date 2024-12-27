@@ -52,8 +52,8 @@ spi:
     - 14
 
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
+  on_connect:
+    - delay: 5s # Gives time for improv results to be transmitted
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
