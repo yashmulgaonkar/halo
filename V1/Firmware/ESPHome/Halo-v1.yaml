@@ -1,12 +1,13 @@
 #Define Project
 substitutions:
   name: halo
-  version: "24.12.27.1"
+  version: "24.12.27.2"
   device_description: ${name} - v${version}.
   
 esphome:
   name: halo-v1
   friendly_name: Halo Air Quality Sensor
+  name_add_mac_suffix: true
   platformio_options:
     upload_speed: 921600
     build_unflags: -Werror=all
@@ -32,6 +33,9 @@ esp32:
 ota:
   - platform: esphome
     id: ota_default
+
+esp32_improv:
+  authorizer: none
 
 dashboard_import:
   package_import_url: github://yashmulgaonkar/halo/V1/Firmware/ESPHome/Halo-v1.yaml@main
@@ -262,7 +266,7 @@ number:
     min_value: -70.0
     max_value: 70.0
     entity_category: "CONFIG"
-    unit_of_measurement: "°F"
+    unit_of_measurement: "°C"
     optimistic: true
     update_interval: never
     step: 0.1
