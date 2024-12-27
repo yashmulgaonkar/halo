@@ -85,13 +85,6 @@ switch:
 
 interval:
   - interval: 10s
-    then:
-      - lambda: |-
-          ESP_LOGI("OTA", "Checking for OTA updates...");
-          id(ota_default).set_update_url("https://github.com/yashmulgaonkar/halo/releases/latest/download/halo-v1-esp32s3.ota.bin");
-          id(ota_default).start_update();
-
-  - interval: 10s
     then:    
       if:
         condition:
@@ -145,13 +138,6 @@ api:
       - light.turn_off: rgb_light
       - lambda: 'id(cycleCounter) = 30;'    
   services:
-    - service: ota_update_from_github
-      then:
-        - lambda: |-
-            ESP_LOGI("OTA", "Starting OTA update from GitHub...");
-            id(ota_default).set_update_url("https://github.com/yashmulgaonkar/halo/releases/latest/download/halo-v1-esp32s3.ota.bin");
-            id(ota_default).start_update();
-
     #Co2 Calibration Service
     - service: calibrate_co2_value
       variables:
