@@ -34,7 +34,7 @@ ota:
   - platform: esphome
     id: ota_default
     safe: true
-    update_url: "https://yashmulgaonkar.github.io/<repository-name>/manifest.json"    
+    update_url: "https://api.github.com/repos/yashmulgaonkar/halo/releases/latest"
 
 esp32_improv:
   authorizer: none
