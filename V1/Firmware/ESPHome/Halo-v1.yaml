@@ -95,7 +95,11 @@ interval:
           - lvgl.widget.update:
               id: wifi_stat
               text_color: my_red
-              
+
+  - interval: 1s
+    then:
+      - script.execute: time_update  
+
   - interval: 1s
     then:
       - if:
@@ -228,15 +232,10 @@ color:
     blue: 0%
 
 time:
-  - platform: sntp
-    id: sntp_time
-    timezone: America/Los_Angeles
-    servers:
-     - 0.pool.ntp.org
-     - 1.pool.ntp.org
-     - 2.pool.ntp.org
+  - platform: homeassistant
+    id: ha_time
     on_time_sync:
-      - script.execute: time_update    
+      - script.execute: time_update
 
 script:
   - id: time_update
@@ -245,14 +244,14 @@ script:
           id: timeVal
           text: !lambda |-
             static char time_buf[17];
-            auto now = id(sntp_time).now();            
+            auto now = id(ha_time).now();
             bool is_pm = now.hour >= 12;
             int hour_12 = now.hour % 12;
             if (hour_12 == 0) {
-            hour_12 = 12; // 12 AM/PM should be displayed as 12, not 0
+              hour_12 = 12; // 12 AM/PM should be displayed as 12, not 0
             }
             snprintf(time_buf, sizeof(time_buf), "%2d:%02d%s", hour_12, now.minute, is_pm ? "PM" : "AM");
-            return time_buf; 
+            return time_buf;
 
 number:
   - platform: template
