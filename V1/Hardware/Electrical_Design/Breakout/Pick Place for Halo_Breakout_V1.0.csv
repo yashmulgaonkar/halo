@@ -1,0 +1,8 @@
+"Designator","Comment","Layer","Footprint","Center-X(mil)","Center-Y(mil)","Rotation","Description"
+"C4","GRM188R61E105KA12D","TopLayer","CAPC1608X90X35LL10T15","118.110","-511.811","0",""
+"C3","CC0603ZRY5V9BB104","TopLayer","CAPC1608X90X40LL10T20","118.110","-452.756","0","Chip Capacitor, 100 nF, - 20% to + 80%, 50 V, -30 to 85 degC, 0603 (1608 Metric), RoHS, Tape and Reel"
+"C2","GRM188R61E105KA12D","TopLayer","CAPC1608X90X35LL10T15","118.110","-393.701","180",""
+"C1","CC0603ZRY5V9BB104","TopLayer","CAPC1608X90X40LL10T20","118.110","-334.646","180","Chip Capacitor, 100 nF, - 20% to + 80%, 50 V, -30 to 85 degC, 0603 (1608 Metric), RoHS, Tape and Reel"
+"J1","SM07B-GHS-TB(LF)(SN)","TopLayer","FP-SM07B-GHS-TB_LF_SN-MFG","0.000","560.039","180","CONN HEADER SMD R/A 7POS 1.25MM"
+"J3","20021311-00030T4LF","BottomLayer","20021311-00030T4LF","314.961","-255.906","180","30 Position Receptacle Connector 0.050" (1.27mm) Through Hole Gold"
+"J2","I2C","TopLayer","FP-BM04B-SRSS-TBT_LF_SN-MFG","-267.224","275.591","90","CONN HEADER SMD 4POS 1MM"
