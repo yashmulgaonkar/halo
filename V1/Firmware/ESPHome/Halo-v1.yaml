@@ -13,8 +13,6 @@ esphome:
     name: "yashmulgaonkar.Halo-v1"
     version: "${version}"
 
-  min_version: 2024.6.4  
-
 dashboard_import:
   package_import_url: github://yashmulgaonkar/halo/V1/Firmware/ESPHome/Halo-v1.yaml@main
   import_full_config: true
