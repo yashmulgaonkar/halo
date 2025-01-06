@@ -38,7 +38,7 @@ wifi:
 
 packages:
   remote_package:
-    url: https://github.com/yashmulgaonkar/halo
+    url: https://github.com/yashmulgaonkar/halo/
     ref: main
     files:
       - V1/Firmware/ESPHome/Halo-v1-Core.yaml
