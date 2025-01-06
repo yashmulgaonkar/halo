@@ -3,22 +3,6 @@ substitutions:
   name: halo
   version: "25.1.5.1"
   device_description: ${name} - v${version}.
-  
-esphome:
-  name: halo-v1
-  friendly_name: Halo Air Quality Sensor
-  name_add_mac_suffix: true
-  platformio_options:
-    upload_speed: 921600
-    build_unflags: -Werror=all
-    board_build.flash_mode: dio
-    board_build.f_flash: 80000000L
-    board_build.f_cpu: 240000000L
-
-  project:
-    name: "yashmulgaonkar.Halo-v1"
-    version: "${version}"
-
 
 psram:
   mode: octal
@@ -30,16 +14,8 @@ esp32:
   framework:
     type: esp-idf
 
-ota:
-  - platform: esphome
-    id: ota_default
-
 esp32_improv:
   authorizer: none
-
-dashboard_import:
-  package_import_url: github://yashmulgaonkar/halo/V1/Firmware/ESPHome/Halo-v1.yaml@main
-  import_full_config: true
 
 external_components:
   - source: github://yashmulgaonkar/esphome-components
@@ -54,14 +30,6 @@ spi:
     - 18
     - 21
     - 14
-
-wifi:
-  on_connect:
-    - delay: 5s # Gives time for improv results to be transmitted
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "Halo Hotspot"
 
 captive_portal:          
 
