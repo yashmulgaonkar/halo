@@ -31,7 +31,7 @@ jobs:
       - name: Read version from YAML file
         id: read_version
         run: |
-          version=$(awk '/substitutions:/ {found=1} found && /version:/ {print $2; exit}' V1/Firmware/ESPHome/Halo-v1.yaml | tr -d '"')
+          version=$(awk '/substitutions:/ {found=1} found && /version:/ {print $2; exit}' V1/Firmware/ESPHome/Halo-v1-Core.yaml | tr -d '"')
           echo "project_version=$version" >> $GITHUB_ENV
 
       - name: Move generated files to output
