@@ -12,7 +12,7 @@ All 3D print files for the enclosure are available on the following platforms:
 1. Click one of the buttons above to access the 3D print files on your preferred platform.
 2. Download the STL/STEP files.
 3. Print the parts using your 3D printer and filaments of choice.
-4. Assemble the enclosure following the project documentation.
+4. Assemble the enclosure following the project documentation on the [Halo Wiki](https://github.com/yashmulgaonkar/halo/wiki).
 
 ### Feedback and Contributions
 Feel free to open an issue or submit a pull request if you encounter any issues or have suggestions for improvements.
@@ -20,4 +20,4 @@ Feel free to open an issue or submit a pull request if you encounter any issues 
 ---
 
 ### License
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/yashmulgaonkar/halo/blob/main/LICENSE) file for details.
