@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.1.7.2"
+  version: "25.1.16.1"
   device_description: ${name} - v${version}.
 
 psram:
@@ -159,7 +159,7 @@ web_server:
   port: 80
 
 image:
-  - file: https://yashmulgaonkar.com/YM.png
+  - file: https://yashmulgaonkar.github.io/assets/YM.png
     id: ym_logo
     resize: 25x25
     type: RGB565
