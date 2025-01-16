@@ -14,17 +14,12 @@ esphome:
     version: "${version}"
 
 dashboard_import:
-  package_import_url: github://yashmulgaonkar/halo/V1/Firmware/ESPHome/Halo-v1.yaml@main
+  package_import_url: github://yashmulgaonkar/halo/TFT_LCDT-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml@main
   import_full_config: true
 
 ota:
   - platform: esphome
     id: ota_default
-
-
-# external_components:
-#   - source: github://yashmulgaonkar/esphome-components
-#     components: [axs15231, sy6970]
 
 wifi:
   on_connect:
@@ -39,5 +34,5 @@ packages:
     url: https://github.com/yashmulgaonkar/halo/
     ref: main
     files:
-      - V1/Firmware/ESPHome/Halo-v1-Core.yaml
+      - TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1-Core.yaml
     refresh: 0d
