@@ -42,7 +42,7 @@ globals:
     restore_value: no
     initial_value: '0' 
 
-  - id: isCelcius
+  - id: isCelsius
     type: bool
     restore_value: no
     initial_value: 'false'
@@ -61,9 +61,9 @@ switch:
     id: set_to_celsius
     optimistic: true
     turn_on_action:
-      - lambda: 'id(isCelcius) = true;'
+      - lambda: 'id(isCelsius) = true;'
     turn_off_action:
-      - lambda: 'id(isCelcius) = false;'
+      - lambda: 'id(isCelsius) = false;'
 
 interval:
   - interval: 10s
@@ -701,17 +701,18 @@ sensor:
                 static char buffer[10];
                 - if:
                     condition:
-                      isCelcius #test to see if Celcius is selected in settings
+                      isCelsius #test to see if Celsius is selected in settings
                     then:
-                      snprintf(buffer, sizeof(buffer), "%.01f", (x - id(sen55_temperature_offset).state));  # Return celcius value if Celcius is selected
+                      snprintf(buffer, sizeof(buffer), "%.01f", (x - id(sen55_temperature_offset).state));  # Return celsius value if Celsius is selected
                       return buffer;
                     else:
-                      snprintf(buffer, sizeof(buffer), "%.01f", ((x - id(sen55_temperature_offset).state)* 9.0 / 5.0) + 32.0); # Return Fahrenheit value if Celcius is not selected
+                      snprintf(buffer, sizeof(buffer), "%.01f", ((x - id(sen55_temperature_offset).state)* 9.0 / 5.0) + 32.0); # Return Fahrenheit value if Celsius is not selected
                       return buffer;
           - if:
               condition:
-                isCelcius #test to see if Celcius is selected in settings
+                isCelsius #test to see if Celsius is selected in settings
               then: #Display comfort settings for Celcius Values
+                - if:
                   condition:
                     lambda: "return x >= 20 && x <= 22;"  # Comfortable temperature range (°C)
                   then:
@@ -740,8 +741,9 @@ sensor:
                                   text_color: my_red  # Extreme discomfort or unsafe (°C)
           -if:
               condition:
-                !isCelcius
-                then:
+                !isCelsius
+              then:
+                - if:
                   condition:
                       lambda: "return x >= 65 && x <= 75;"  # Comfortable temperature range (°F)
                   then:
