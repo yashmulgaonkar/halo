@@ -65,12 +65,6 @@ switch:
     turn_off_action:
       - lambda: 'id(isCelcius) = false;'
 
-api:
-  services:
-    - service: toggle_is_celcius
-      then:
-        - switch.toggle: set_to_celsius
-
 interval:
   - interval: 10s
     then:    
@@ -136,7 +130,10 @@ api:
             id: scd40
     - service: sen55_clean
       then:
-        - sen5x.start_fan_autoclean: sen55    
+        - sen5x.start_fan_autoclean: sen55  
+    - service: toggle_is_celcius
+      then:
+        - switch.toggle: set_to_celsius  
 
 i2c:
   sda: 9
