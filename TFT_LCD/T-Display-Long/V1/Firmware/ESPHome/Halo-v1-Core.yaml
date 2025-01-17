@@ -42,19 +42,10 @@ globals:
     restore_value: no
     initial_value: '0' 
 
-input_boolean:
-  set_to_celcius:
-    name: Set to Celsius
-    initial: off
-
-automation:
-  - alias: 'Toggle Celsius'
-    trigger:
-      platform: state
-      entity_id: input_boolean.set_to_celsius
-    action:
-      service: input.boolean.toggle
-      entity_id: input_boolean.isCelcius
+  - id: isCelcius
+    type: bool
+    restore_value: no
+    initial_value: 'false'
 
 switch:
   - platform: template
@@ -64,6 +55,21 @@ switch:
     restore_mode: RESTORE_DEFAULT_ON
     optimistic: true
     entity_category: "config"
+
+  - platform: template
+    name: "Set to Celsius"
+    id: set_to_celsius
+    optimistic: true
+    turn_on_action:
+      - lambda: 'id(isCelcius) = true;'
+    turn_off_action:
+      - lambda: 'id(isCelcius) = false;'
+
+api:
+  services:
+    - service: toggle_is_celcius
+      then:
+        - switch.toggle: set_to_celsius
 
 interval:
   - interval: 10s
