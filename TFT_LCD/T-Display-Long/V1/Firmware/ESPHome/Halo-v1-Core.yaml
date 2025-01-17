@@ -701,7 +701,7 @@ sensor:
                 static char buffer[10];
                 - if:
                     condition:
-                      id(isCelcius).state #test to see if Celcius is selected in settings
+                      isCelcius #test to see if Celcius is selected in settings
                     then:
                       return snprintf(buffer, sizeof(buffer), "%.01f", (x - id(sen55_temperature_offset).state));  # Return celcius value if Celcius is selected
                       return buffer;
@@ -710,12 +710,13 @@ sensor:
                       return buffer;
           - if:
               condition:
-                id(isCelcius).state #test to see if Celcius is selected in settings
+                isCelcius #test to see if Celcius is selected in settings
               then: #Display comfort settings for Celcius Values
-                condition:
-                  lambda: "return x >= 20 && x <= 22;"  # Comfortable temperature range (°C)
-                then:
-                  - lvgl.label.update:
+                - if:
+                  condition:
+                    lambda: "return x >= 20 && x <= 22;"  # Comfortable temperature range (°C)
+                  then:
+                    - lvgl.label.update:
                       id: temperature_value
                       text_color: my_green
                 else:
@@ -738,7 +739,8 @@ sensor:
                               - lvgl.label.update:
                                   id: temperature_value
                                   text_color: my_red  # Extreme discomfort or unsafe (°C)
-              else if:
+          else 
+            - if:
                   condition:
                       lambda: "return x >= 65 && x <= 75;"  # Comfortable temperature range (°F)
                   then:
