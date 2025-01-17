@@ -739,8 +739,9 @@ sensor:
                                   id: temperature_value
                                   text_color: my_red  # Extreme discomfort or unsafe (°C)
               else:
-                condition:
-                  lambda: "return x >= 65 && x <= 75;"  # Comfortable temperature range (°F)
+                - if:
+                  condition:
+                      lambda: "return x >= 65 && x <= 75;"  # Comfortable temperature range (°F)
                 then:
                   - lvgl.label.update:
                       id: temperature_value
