@@ -14,7 +14,7 @@ esphome:
     version: "${version}"
 
 dashboard_import:
-  package_import_url: github://yashmulgaonkar/halo/TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml@main
+  package_import_url: github://terraincognito-sudo/halo/TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml@main
   import_full_config: true
 
 ota:
@@ -31,7 +31,7 @@ wifi:
 
 packages:
   remote_package:
-    url: https://github.com/yashmulgaonkar/halo/
+    url: https://github.com/terraincognito-sudo/halo/
     ref: main
     files:
       - TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1-Core.yaml
