@@ -699,77 +699,74 @@ sensor:
               id: temperature_value
               text: !lambda |-
                 static char buffer[10];
-                - if:
-                    condition:
-                      isCelsius #test to see if Celsius is selected in settings
-                    then:
-                      snprintf(buffer, sizeof(buffer), "%.01f", (x - id(sen55_temperature_offset).state));  # Return celsius value if Celsius is selected
-                      return buffer;
-                    else:
-                      snprintf(buffer, sizeof(buffer), "%.01f", ((x - id(sen55_temperature_offset).state)* 9.0 / 5.0) + 32.0); # Return Fahrenheit value if Celsius is not selected
-                      return buffer;
+                if (id(isCelsius).state) {  # test to see if Celsius is selected in settings
+                  snprintf(buffer, sizeof(buffer), "%.01f", (x - id(sen55_temperature_offset).state));  # Return celsius value if Celsius is selected
+                } else {
+                  snprintf(buffer, sizeof(buffer), "%.01f", ((x - id(sen55_temperature_offset).state) * 9.0 / 5.0) + 32.0);  # Return Fahrenheit value if Celsius is not selected
+                }
+                return buffer;
           - if:
               condition:
-                isCelsius #test to see if Celsius is selected in settings
-              then: #Display comfort settings for Celcius Values
+                lambda: "return id(isCelsius).state;"  # test to see if Celsius is selected in settings
+              then:  # Display comfort settings for Celsius Values
                 - if:
-                  condition:
-                    lambda: "return x >= 20 && x <= 22;"  # Comfortable temperature range (°C)
-                  then:
-                    - lvgl.label.update:
-                      id: temperature_value
-                      text_color: my_green
-                else:
-                  - if:
-                      condition:
-                        lambda: "return (x > 22 && x <= 24) || (x >= 18 && x < 20);"  # Slightly uncomfortable (°C)
-                      then:
-                        - lvgl.label.update:
-                            id: temperature_value
-                            text_color: my_yellow
-                      else:
-                        - if:
-                            condition:
-                              lambda: "return (x > 24 && x <= 26) || (x >= 16 && x < 18);"  # Moderately uncomfortable (°C)
-                            then:
-                              - lvgl.label.update:
-                                  id: temperature_value
-                                  text_color: my_orange
-                            else:
-                              - lvgl.label.update:
-                                  id: temperature_value
-                                  text_color: my_red  # Extreme discomfort or unsafe (°C)
-          -if:
+                    condition:
+                      lambda: "return x >= 20 && x <= 22;"  # Comfortable temperature range (°C)
+                    then:
+                      - lvgl.label.update:
+                          id: temperature_value
+                          text_color: my_green
+                    else:
+                      - if:
+                          condition:
+                            lambda: "return (x > 22 && x <= 24) || (x >= 18 && x < 20);"  # Slightly uncomfortable (°C)
+                          then:
+                            - lvgl.label.update:
+                                id: temperature_value
+                                text_color: my_yellow
+                          else:
+                            - if:
+                                condition:
+                                  lambda: "return (x > 24 && x <= 26) || (x >= 16 && x < 18);"  # Moderately uncomfortable (°C)
+                                then:
+                                  - lvgl.label.update:
+                                      id: temperature_value
+                                      text_color: my_orange
+                                else:
+                                  - lvgl.label.update:
+                                      id: temperature_value
+                                      text_color: my_red  # Extreme discomfort or unsafe (°C)
+          - if:
               condition:
-                !isCelsius
-              then:
+                lambda: "return !id(isCelsius).state;"  # test to see if Celsius is not selected in settings
+              then:  # Display comfort settings for Fahrenheit Values
                 - if:
-                  condition:
-                      lambda: "return x >= 65 && x <= 75;"  # Comfortable temperature range (°F)
-                  then:
-                  - lvgl.label.update:
-                      id: temperature_value
-                      text_color: my_green
-                  else:
-                    - if:
-                      condition:
-                        lambda: "return (x > 75 && x <= 80) || (x >= 60 && x < 65);"  # Slightly uncomfortable (°F)
-                      then:
-                        - lvgl.label.update:
-                            id: temperature_value
-                            text_color: my_yellow
-                      else:
-                        - if:
-                            condition:
-                              lambda: "return (x > 80 && x <= 85) || (x >= 50 && x < 60);"  # Moderately uncomfortable (°F)
-                            then:
-                              - lvgl.label.update:
-                                  id: temperature_value
-                                  text_color: my_orange
-                            else:
-                              - lvgl.label.update:
-                                  id: temperature_value
-                                  text_color: my_red  # Extreme discomfort or unsafe (°F)                            
+                    condition:
+                      lambda: "return x >= 68 && x <= 72;"  # Comfortable temperature range (°F)
+                    then:
+                      - lvgl.label.update:
+                          id: temperature_value
+                          text_color: my_green
+                    else:
+                      - if:
+                          condition:
+                            lambda: "return (x > 72 && x <= 75) || (x >= 64 && x < 68);"  # Slightly uncomfortable (°F)
+                          then:
+                            - lvgl.label.update:
+                                id: temperature_value
+                                text_color: my_yellow
+                          else:
+                            - if:
+                                condition:
+                                  lambda: "return (x > 75 && x <= 79) || (x >= 60 && x < 64);"  # Moderately uncomfortable (°F)
+                                then:
+                                  - lvgl.label.update:
+                                      id: temperature_value
+                                      text_color: my_orange
+                                else:
+                                  - lvgl.label.update:
+                                      id: temperature_value
+                                      text_color: my_red  # Extreme discomfort or unsafe (°F)                            
     humidity:
       name: "SEN55 Humidity"
       filters:
