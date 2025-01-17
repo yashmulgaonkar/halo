@@ -699,15 +699,15 @@ sensor:
               id: temperature_value
               text: !lambda |-
                 static char buffer[10];
-                if (id(isCelsius).state) {  # test to see if Celsius is selected in settings
-                  snprintf(buffer, sizeof(buffer), "%.01f", (x - id(sen55_temperature_offset).state));  # Return celsius value if Celsius is selected
+                if (isCelsius) {  
+                  snprintf(buffer, sizeof(buffer), "%.01f", (x - id(sen55_temperature_offset).state));  
                 } else {
-                  snprintf(buffer, sizeof(buffer), "%.01f", ((x - id(sen55_temperature_offset).state) * 9.0 / 5.0) + 32.0);  # Return Fahrenheit value if Celsius is not selected
+                  snprintf(buffer, sizeof(buffer), "%.01f", ((x - id(sen55_temperature_offset).state) * 9.0 / 5.0) + 32.0);  
                 }
                 return buffer;
           - if:
               condition:
-                lambda: "return id(isCelsius).state;"  # test to see if Celsius is selected in settings
+                lambda: "return isCelsius;"  # test to see if Celsius is selected in settings
               then:  # Display comfort settings for Celsius Values
                 - if:
                     condition:
@@ -738,7 +738,7 @@ sensor:
                                       text_color: my_red  # Extreme discomfort or unsafe (°C)
           - if:
               condition:
-                lambda: "return !id(isCelsius).state;"  # test to see if Celsius is not selected in settings
+                lambda: "return !isCelsius;"  # test to see if Celsius is not selected in settings
               then:  # Display comfort settings for Fahrenheit Values
                 - if:
                     condition:
