@@ -62,8 +62,14 @@ switch:
     optimistic: true
     turn_on_action:
       - lambda: 'id(isCelsius) = true;'
+      - logger.log:
+          format: "isCelsius is now %s"
+          args: ['id(isCelsius) ? "true" : "false"']
     turn_off_action:
       - lambda: 'id(isCelsius) = false;'
+      - logger.log:
+          format: "isCelsius is now %s"
+          args: ['id(isCelsius) ? "true" : "false"']
 
 interval:
   - interval: 10s
