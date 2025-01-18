@@ -159,7 +159,7 @@ web_server:
   port: 80
 
 image:
-  - file: https://yashmulgaonkar.github.io/assets/YM.png
+  - file: https://yashmulgaonkar.github.io/assets/YM2.png
     id: ym_logo
     resize: 25x25
     type: RGB565
