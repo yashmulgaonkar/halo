@@ -59,6 +59,7 @@ switch:
   - platform: template
     name: "Set to Celsius"
     id: set_to_celsius
+    icon: mdi:TemperatureCelsius
     optimistic: true
     turn_on_action:
       - lambda: 'id(isCelsius) = true;'
