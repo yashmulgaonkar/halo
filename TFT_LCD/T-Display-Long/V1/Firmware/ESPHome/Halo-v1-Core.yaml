@@ -1016,7 +1016,7 @@ lvgl:
             long_mode: WRAP
             x: -8
             y: -234
-            text: "\u00B0F"                     
+            text: "\u00B0", isCelsius ? "C" : "F"                     
         - line:
             points:
               - 0, 106
