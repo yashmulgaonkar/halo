@@ -1016,7 +1016,11 @@ lvgl:
             long_mode: WRAP
             x: -8
             y: -234
-            text: ("\u00B0", isCelsius ? "C" : "F")                     
+            text: 
+              !lambda |-
+              static char temp_buf[3];
+              snprintf(temp_buf, sizeof(temp_buf), "\u00B0", isCelsius ? "C" : "F");
+              return temp_buf;                  
         - line:
             points:
               - 0, 106
