@@ -1017,8 +1017,8 @@ lvgl:
             x: -8
             y: -234
             text: 
-              !lambda |-
-              return ("\u00B0" + 'id(isCelsius) ? "C" : "F"').c_str();            
+              format: "\u00B0%s"
+              args: ['id(isCelsius) ? "C" : "F"']           
         - line:
             points:
               - 0, 106
