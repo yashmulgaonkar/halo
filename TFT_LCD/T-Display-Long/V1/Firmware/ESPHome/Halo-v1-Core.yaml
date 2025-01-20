@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.1.20.3"
+  version: "25.1.20.4"
   device_description: ${name} - v${version}.
 
 psram:
@@ -59,7 +59,7 @@ switch:
   - platform: template
     name: "Set to Celsius"
     id: set_to_celsius
-    icon: mdi:TemperatureCelsius
+    icon: mdi:temperature-celsius
     optimistic: true
     turn_on_action:
       - lambda: 'id(isCelsius) = true;'
@@ -1018,7 +1018,7 @@ lvgl:
             y: -234
             text: 
               !lambda |-
-              static char temp_buf[2];
+              static char temp_buf[6];
               snprintf(temp_buf, sizeof(temp_buf), "\u00B0", 'id(isCelsius) ? "C" : "F"');
               return temp_buf;                  
         - line:
