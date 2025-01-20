@@ -1018,10 +1018,7 @@ lvgl:
             y: -234
             text: 
               !lambda |-
-              return ("\u00B0", 'id(isCelsius) ? "C" : "F"');
-              #static char temp_buf[6];
-              # snprintf(temp_buf, sizeof(temp_buf), "\u00B0", 'id(isCelsius) ? "C" : "F"');
-              # return temp_buf;                  
+              return ("\u00B0" + 'id(isCelsius) ? "C" : "F"').c_str();            
         - line:
             points:
               - 0, 106
