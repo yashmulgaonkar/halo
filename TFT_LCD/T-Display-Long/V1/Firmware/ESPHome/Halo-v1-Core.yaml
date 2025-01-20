@@ -716,6 +716,10 @@ sensor:
               condition:
                 lambda: "return id(isCelsius);"  # test to see if Celsius is selected in settings
               then:  # Display comfort settings for Celsius Values
+                - lvgl.label.update: #Update display for Celsius Units
+                    id: temperature_units
+                    text: !lambda |-
+                      return "\u00B0" + std::string(id(isCelsius) ? "C" : "F");
                 - if:
                     condition:
                       lambda: "return x >= 20 && x <= 22;"  # Comfortable temperature range (°C)
@@ -1016,8 +1020,7 @@ lvgl:
             long_mode: WRAP
             x: -8
             y: -234
-            text: !lambda |-
-                return "\u00B0" + std::string(id(isCelsius) ? "C" : "F");
+            text: "\u00B0F"
         - line:
             points:
               - 0, 106
