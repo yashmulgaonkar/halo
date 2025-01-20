@@ -1019,7 +1019,7 @@ lvgl:
             text: 
               !lambda |-
               static char temp_buf[3];
-              snprintf(temp_buf, sizeof(temp_buf), "\u00B0", isCelsius ? "C" : "F");
+              snprintf(temp_buf, sizeof(temp_buf), "\u00B0", id(isCelsius) ? "C" : "F");
               return temp_buf;                  
         - line:
             points:
