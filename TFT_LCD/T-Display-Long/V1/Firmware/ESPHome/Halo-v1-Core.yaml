@@ -706,7 +706,7 @@ sensor:
               id: temperature_value
               text: !lambda |-
                 static char buffer[10];
-                if id(isCelsius)  {  
+                if (id(isCelsius))  {  
                   snprintf(buffer, sizeof(buffer), "%.01f", (x - id(sen55_temperature_offset).state));  
                 } else {
                   snprintf(buffer, sizeof(buffer), "%.01f", ((x - id(sen55_temperature_offset).state) * 9.0 / 5.0) + 32.0);  
