@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.1.20.2"
+  version: "25.1.20.3
   device_description: ${name} - v${version}.
 
 psram:
@@ -1018,8 +1018,8 @@ lvgl:
             y: -234
             text: 
               !lambda |-
-              static char temp_buf[3];
-              snprintf(temp_buf, sizeof(temp_buf), "\u00B0", id(isCelsius) ? "C" : "F");
+              static char temp_buf[2];
+              snprintf(temp_buf, sizeof(temp_buf), "\u00B0", 'id(isCelsius) ? "C" : "F"');
               return temp_buf;                  
         - line:
             points:
