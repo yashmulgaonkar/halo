@@ -1014,7 +1014,7 @@ lvgl:
             text_font: montserrat_14
             text_color: my_white
             long_mode: WRAP
-            x: -8
+            x: -6
             y: -234
             text: 
               format: "\u00B0 %s"
