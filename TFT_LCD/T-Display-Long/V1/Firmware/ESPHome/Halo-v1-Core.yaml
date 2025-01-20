@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.1.20.6"
+  version: "25.1.20.7"
   device_description: ${name} - v${version}.
 
 psram:
@@ -138,7 +138,7 @@ api:
     - service: sen55_clean
       then:
         - sen5x.start_fan_autoclean: sen55  
-    - service: toggle_is_celcius
+    - service: toggle_is_celsius
       then:
         - switch.toggle: set_to_celsius  
 
@@ -1014,11 +1014,10 @@ lvgl:
             text_font: montserrat_14
             text_color: my_white
             long_mode: WRAP
-            x: -6
+            x: -8
             y: -234
-            text: 
-              format: "\u00B0 %s"
-              args: ['id(isCelsius) ? "C" : "F"']           
+            text: !lambda |-
+                return "\u00B0" + std::string(id(isCelsius) ? "C" : "F");
         - line:
             points:
               - 0, 106
