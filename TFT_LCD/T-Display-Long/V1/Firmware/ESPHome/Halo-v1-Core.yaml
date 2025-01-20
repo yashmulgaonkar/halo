@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.1.16.2"
+  version: "25.1.20.1"
   device_description: ${name} - v${version}.
 
 psram:
