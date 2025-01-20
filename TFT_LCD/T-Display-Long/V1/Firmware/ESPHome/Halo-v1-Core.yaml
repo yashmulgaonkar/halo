@@ -1017,7 +1017,7 @@ lvgl:
             x: -8
             y: -234
             text: 
-              format: "\u00B0%s"
+              format: "\u00B0 %s"
               args: ['id(isCelsius) ? "C" : "F"']           
         - line:
             points:
