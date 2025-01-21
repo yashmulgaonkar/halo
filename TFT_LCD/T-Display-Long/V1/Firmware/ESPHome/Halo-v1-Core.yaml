@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.1.20.8"
+  version: "25.1.20.9"
   device_description: ${name} - v${version}.
 
 psram:
@@ -712,14 +712,14 @@ sensor:
                   snprintf(buffer, sizeof(buffer), "%.01f", ((x - id(sen55_temperature_offset).state) * 9.0 / 5.0) + 32.0);  
                 }
                 return buffer;
+          - lvgl.label.update: #Update display for Units
+              id: temperature_units
+              text: !lambda |-
+                return "\u00B0" + std::string(id(isCelsius) ? "C" : "F");
           - if:
               condition:
                 lambda: "return id(isCelsius);"  # test to see if Celsius is selected in settings
               then:  # Display comfort settings for Celsius Values
-                - lvgl.label.update: #Update display for Celsius Units
-                    id: temperature_units
-                    text: !lambda |-
-                      return "\u00B0" + std::string(id(isCelsius) ? "C" : "F");
                 - if:
                     condition:
                       lambda: "return x >= 20 && x <= 22;"  # Comfortable temperature range (°C)
