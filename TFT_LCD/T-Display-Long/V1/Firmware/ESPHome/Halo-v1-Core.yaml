@@ -14,9 +14,6 @@ esp32:
   framework:
     type: esp-idf
 
-esp32_improv:
-  authorizer: none
-
 external_components:
   - source: github://yashmulgaonkar/esphome-components
     components: [axs15231, sy6970]
@@ -30,8 +27,6 @@ spi:
     - 18
     - 21
     - 14
-
-captive_portal:          
 
 logger:
   level: DEBUG
@@ -206,6 +201,7 @@ color:
 time:
   - platform: homeassistant
     id: ha_time
+    timezone: "America/Chicago"
     on_time_sync:
       - script.execute: time_update
 
