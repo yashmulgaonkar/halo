@@ -1,7 +1,7 @@
 esphome:
   name: halo-v1
   friendly_name: Halo Air Quality Sensor
-  name_add_mac_suffix: true
+  #name_add_mac_suffix: true
   platformio_options:
     upload_speed: 921600
     build_unflags: -Werror=all
@@ -19,20 +19,17 @@ dashboard_import:
 
 ota:
   - platform: esphome
-    id: ota_default
 
 wifi:
-  on_connect:
-    - delay: 5s # Gives time for improv results to be transmitted
+  power_save_mode: none
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "Halo Hotspot"
 
+captive_portal:
+
+improv_serial:
+
 packages:
-  remote_package:
-    url: https://github.com/yashmulgaonkar/halo/
-    ref: main
-    files:
-      - TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1-Core.yaml
-    refresh: 0d
+  core: !include Halo-v1-Core.yaml
