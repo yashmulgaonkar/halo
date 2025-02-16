@@ -35,7 +35,10 @@ globals:
   - id: cycleCounter
     type: int
     restore_value: no
-    initial_value: '0' 
+    initial_value: '0'
+  - id: temp_unit_changed
+    type: bool
+    initial_value: "true"
 
 switch:
   - platform: template
@@ -45,6 +48,23 @@ switch:
     restore_mode: RESTORE_DEFAULT_ON
     optimistic: true
     entity_category: "config"
+
+select:
+  - platform: template
+    name: Display Temperature Unit
+    id: display_temperature_unit
+    entity_category: "Config"
+    options:
+     - "Fahrenheit"
+     - "Celsius"
+     - "Kelvin"
+    initial_option: "Fahrenheit"
+    restore_value: true
+    optimistic: true
+    on_value:
+      - globals.set:
+          id: temp_unit_changed
+          value: "true"
 
 interval:
   - interval: 10s
@@ -114,9 +134,12 @@ api:
         - sen5x.start_fan_autoclean: sen55    
 
 i2c:
-  sda: 9
-  scl: 48
-  id: lily_i2c
+  - sda: 9
+    scl: 48
+    id: lily_i2c
+  - sda: 15
+    scl: 10
+    id: touch_i2c
   
 display:
   - platform: axs15231
@@ -135,7 +158,7 @@ touchscreen:
   - platform: axs15231
     id: lily_touch
     display: lily_display
-    i2c_id: lily_i2c
+    i2c_id: touch_i2c
     interrupt_pin: GPIO11
     transform:
       mirror_x: false
@@ -535,6 +558,7 @@ sensor:
                                 id: nh3_value
                                 text_color: my_red  # High level, unsafe indoors                            
     update_interval: 10s
+    i2c_id: lily_i2c
     address: 0x75
 
   - platform: bme280_i2c
@@ -668,21 +692,38 @@ sensor:
       name: "SEN55 Temperature"
       accuracy_decimals: 1
       filters:
-        - lambda: return x - id(sen55_temperature_offset).state;
-        # - lambda: |-
-        #     float celsius = x - id(sen55_temperature_offset).state;
-        #     return (celsius * 9.0 / 5.0) + 32.0;        
+        - offset: !lambda return -1.0 * id(sen55_temperature_offset).state;
       on_value:
         then:
+          - if:
+              condition:
+                lambda: "return temp_unit_changed;"
+              then:
+                - lvgl.label.update:
+                    id: temperature_units
+                    text: !lambda |-
+                      if(id(display_temperature_unit).state == "Fahrenheit")
+                        return "\u00B0F";
+                      else if(id(display_temperature_unit).state == "Kelvin")
+                        return "K";
+                      return "\u00B0C";
+                - globals.set:
+                    id: temp_unit_changed
+                    value: "false"
           - lvgl.label.update:
               id: temperature_value
               text: !lambda |-
                 static char buffer[10];
-                snprintf(buffer, sizeof(buffer), "%.01f", ((x - id(sen55_temperature_offset).state)* 9.0 / 5.0) + 32.0);
+                if(id(display_temperature_unit).state == "Fahrenheit")
+                  snprintf(buffer, sizeof(buffer), "%.01f", (x * 9.0 / 5.0) + 32.0);
+                else if(id(display_temperature_unit).state == "Kelvin")
+                  snprintf(buffer, sizeof(buffer), "%.01f", x + 273.15);
+                else
+                  snprintf(buffer, sizeof(buffer), "%.01f", x);
                 return buffer;
           - if:
               condition:
-                lambda: "return x >= 65 && x <= 75;"  # Comfortable temperature range (°F)
+                lambda: "return x >= 18 && x <= 24;"  # Comfortable temperature range (°C)
               then:
                 - lvgl.label.update:
                     id: temperature_value
@@ -690,7 +731,7 @@ sensor:
               else:
                 - if:
                     condition:
-                      lambda: "return (x > 75 && x <= 80) || (x >= 60 && x < 65);"  # Slightly uncomfortable (°F)
+                      lambda: "return (x > 25 && x <= 27) || (x >= 16 && x < 18);"  # Slightly uncomfortable (°C)
                     then:
                       - lvgl.label.update:
                           id: temperature_value
@@ -698,7 +739,7 @@ sensor:
                     else:
                       - if:
                           condition:
-                            lambda: "return (x > 80 && x <= 85) || (x >= 50 && x < 60);"  # Moderately uncomfortable (°F)
+                            lambda: "return (x > 27 && x <= 30) || (x >= 10 && x < 16);"  # Moderately uncomfortable (°C)
                           then:
                             - lvgl.label.update:
                                 id: temperature_value
@@ -706,7 +747,7 @@ sensor:
                           else:
                             - lvgl.label.update:
                                 id: temperature_value
-                                text_color: my_red  # Extreme discomfort or unsafe (°F)                            
+                                text_color: my_red  # Extreme discomfort or unsafe (°C)
     humidity:
       name: "SEN55 Humidity"
       filters:
@@ -793,6 +834,7 @@ sensor:
                             - lvgl.label.update:
                                 id: voc_value
                                 text_color: my_red                      
+    i2c_id: lily_i2c
     address: 0x69
     update_interval: 10s    
 
