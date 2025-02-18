@@ -14,6 +14,9 @@ esp32:
   framework:
     type: esp-idf
 
+esp32_improv:
+  authorizer: none
+
 external_components:
   - source: github://yashmulgaonkar/esphome-components
     components: [axs15231, sy6970]

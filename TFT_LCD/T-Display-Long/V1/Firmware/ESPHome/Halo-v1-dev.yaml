@@ -20,7 +20,7 @@ ota:
   - platform: esphome
 
 wifi:
-  # Disable power save more for compatibility with some Ubiquiti networks. Requires removing BLE improv setup
+  # Disable power save more for compatibility with some Ubiquiti networks.
   power_save_mode: none
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
@@ -40,3 +40,6 @@ time:
   - platform: homeassistant
     id: !extend ha_time
     timezone: "America/Chicago"
+
+# required to disable wifi power save mode
+esp32_improv: !remove

@@ -21,9 +21,6 @@ ota:
   - platform: esphome
     id: ota_default
 
-esp32_improv:
-  authorizer: none
-
 wifi:
   on_connect:
     - delay: 5s # Gives time for improv results to be transmitted
