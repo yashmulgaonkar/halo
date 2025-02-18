@@ -28,6 +28,8 @@ spi:
     - 21
     - 14
 
+captive_portal:
+
 logger:
   level: DEBUG
 
