@@ -175,6 +175,7 @@ touchscreen:
 
 web_server:
   port: 80
+  version: 3
 
 image:
   - file: https://yashmulgaonkar.github.io/assets/YM.png
