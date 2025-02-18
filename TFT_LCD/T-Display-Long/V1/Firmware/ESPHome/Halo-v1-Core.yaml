@@ -735,7 +735,7 @@ sensor:
               else:
                 - if:
                     condition:
-                      lambda: "return (x > 25 && x <= 27) || (x >= 16 && x < 18);"  # Slightly uncomfortable (°C)
+                      lambda: "return (x > 24 && x <= 27) || (x >= 16 && x < 18);"  # Slightly uncomfortable (°C)
                     then:
                       - lvgl.label.update:
                           id: temperature_value
