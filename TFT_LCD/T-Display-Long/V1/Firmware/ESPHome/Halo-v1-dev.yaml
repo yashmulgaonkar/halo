@@ -26,8 +26,6 @@ wifi:
   ap:
     ssid: "Halo Hotspot"
 
-captive_portal:
-
 improv_serial:
 
 packages:
