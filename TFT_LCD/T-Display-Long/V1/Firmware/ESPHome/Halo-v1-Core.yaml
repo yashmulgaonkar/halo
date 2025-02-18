@@ -226,7 +226,6 @@ color:
 time:
   - platform: homeassistant
     id: ha_time
-    timezone: "America/Chicago"
     on_time_sync:
       - script.execute: time_update
 
