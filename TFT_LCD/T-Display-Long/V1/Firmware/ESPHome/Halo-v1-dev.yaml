@@ -28,5 +28,8 @@ wifi:
 
 improv_serial:
 
+web_server:
+  version: 3
+
 packages:
   core: !include Halo-v1-Core.yaml
