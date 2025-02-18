@@ -1,0 +1,45 @@
+esphome:
+  name: halo-v1
+  friendly_name: Halo Air Quality Sensor
+  platformio_options:
+    upload_speed: 921600
+    build_unflags: -Werror=all
+    board_build.flash_mode: dio
+    board_build.f_flash: 80000000L
+    board_build.f_cpu: 240000000L
+
+  project:
+    name: "yashmulgaonkar.Halo-v1"
+    version: "${version}"
+
+dashboard_import:
+  package_import_url: github://yashmulgaonkar/halo/TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml@main
+  import_full_config: true
+
+ota:
+  - platform: esphome
+
+wifi:
+  # Disable power save more for compatibility with some Ubiquiti networks.
+  power_save_mode: none
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Halo Hotspot"
+
+improv_serial:
+
+web_server:
+  version: 3
+
+packages:
+  core: !include Halo-v1-Core.yaml
+
+# Add local timezone for development since Docker container not set to local timezone
+time:
+  - platform: homeassistant
+    id: !extend ha_time
+    timezone: "America/Chicago"
+
+# required to disable wifi power save mode
+esp32_improv: !remove
