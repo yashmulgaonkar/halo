@@ -229,6 +229,7 @@ color:
 time:
   - platform: homeassistant
     id: ha_time
+    timezone: "America/LosAngeles"
     on_time_sync:
       - script.execute: time_update
 
