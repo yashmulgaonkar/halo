@@ -229,7 +229,6 @@ color:
 time:
   - platform: homeassistant
     id: ha_time
-    timezone: "America/LosAngeles"
     on_time_sync:
       - script.execute: time_update
 
@@ -892,7 +891,7 @@ light:
     id: rgb_light
     name: "Halo"
     pin: GPIO47
-    rmt_channel: 0
+    rmt_channel: 1
     default_transition_length: 0s
     chipset: WS2812
     num_leds: 11
