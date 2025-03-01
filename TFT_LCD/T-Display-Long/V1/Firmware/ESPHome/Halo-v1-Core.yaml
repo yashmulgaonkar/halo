@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.2.17.1"
+  version: "25.2.28.1"
   device_description: ${name} - v${version}.
 
 psram:
@@ -186,7 +186,7 @@ image:
     id: ym_logo
     resize: 25x25
     type: RGB565
-    use_transparency: true
+    transparency: alpha_channel
 
 color:
   - id: my_red
