@@ -9,6 +9,8 @@ esphome:
     board_build.f_flash: 80000000L
     board_build.f_cpu: 240000000L
 
+  min_version: 2025.2.0
+
   project:
     name: "yashmulgaonkar.Halo-v1"
     version: "${version}"
