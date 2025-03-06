@@ -28,15 +28,17 @@ jobs:
 
       - name: Get Version
         id: get_version
-        run: echo "VERSION=$(date +%Y.%m.%d-%H%M)" >> $GITHUB_ENV
+        run: |
+          version=$(awk '/substitutions:/ {found=1} found && /version:/ {print $2; exit}' TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1-Core.yaml | tr -d '"')
+          echo "project_version=$version" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  # Use PAT for authentication
         with:
-          tag_name: v${{ env.VERSION }}
-          release_name: "Release v${{ env.VERSION }}"
+          tag_name: ${{ env.project_version }}
+          release_name: "Release ${{ env.project_version }}"
           draft: false
           prerelease: false
           body: "Auto-generated release from GitHub Actions."
