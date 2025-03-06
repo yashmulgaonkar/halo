@@ -20,6 +20,8 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     if: github.event_name == 'push'  # Only create a release on push
+    permissions:
+      contents: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4.1.7
