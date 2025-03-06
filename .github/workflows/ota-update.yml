@@ -19,29 +19,17 @@ on:
 jobs:
   build-firmware:
     name: Build And Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4.1.7
-
-      - name: Build ESPHome Firmware
-        uses: esphome/workflows/.github/workflows/build.yml@main
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
-        with:
-          files: |
-            TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml
-          esphome-version: stable
-          combined-name: firmware
-          release-summary: ${{ github.event.release.body || '' }}
-          release-url: ${{ github.event.release.html_url || '' }}
-          release-version: ${{ github.event.release.tag_name || inputs.version || 'dev' }}
-
-      - name: Upload Firmware Artifact
-        uses: actions/upload-artifact@v4.3.6
-        with:
-          name: firmware
-          path: firmware
+    uses: esphome/workflows/.github/workflows/build.yml@main
+    with:
+      files: |
+        TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml
+      esphome-version: stable
+      combined-name: firmware
+      release-summary: ${{ github.event.release.body || '' }}
+      release-url: ${{ github.event.release.html_url || '' }}
+      release-version: ${{ github.event.release.tag_name || inputs.version || 'dev' }}
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
 
   build-site:
     name: Build Site
@@ -86,21 +74,4 @@ jobs:
           mkdir -p output/firmware
           cp -r firmware/* output/firmware/
 
-      - name: Download Site Artifact
-        uses: actions/download-artifact@v4.1.8
-        with:
-          name: site
-          path: output
-
-      - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3.0.1
-        with:
-          path: output
-          retention-days: 1
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5.0.0
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4.0.5
+    
