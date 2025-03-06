@@ -14,7 +14,7 @@ on:
 jobs:
   build-firmware:
     name: Build And Release
-    uses: esphome/workflows/.github/workflows/ota-update.yml@main
+    uses: .github/workflows/ota-update.yml@main
     with:
       files: |
         TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml
