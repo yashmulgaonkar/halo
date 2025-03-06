@@ -1,4 +1,9 @@
-name: Publish
+name: Build and Release Halo Firmware
+
+env:
+  DEVICE_NAME: halo
+  RELEASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/latest
+  
 on:
   push:
     branches:
