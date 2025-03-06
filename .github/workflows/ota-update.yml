@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'  # Only create a release on push
     permissions:
-      contents: write
+      contents: write  # Ensure permissions for writing to the repo
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4.1.7
@@ -33,7 +33,7 @@ jobs:
       - name: Create GitHub Release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  # Use PAT for authentication
         with:
           tag_name: v${{ env.VERSION }}
           release_name: "Release v${{ env.VERSION }}"
