@@ -16,8 +16,32 @@ on:
     types: [published]
 
 jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'  # Only create a release on push
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4.1.7
+
+      - name: Get Version
+        id: get_version
+        run: echo "VERSION=$(date +%Y.%m.%d-%H%M)" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.VERSION }}
+          release_name: "Release v${{ env.VERSION }}"
+          draft: false
+          prerelease: false
+          body: "Auto-generated release from GitHub Actions."
+
   build-firmware:
     name: Build And Release
+    needs: create-release
     uses: esphome/workflows/.github/workflows/build.yml@main
     with:
       files: |
@@ -26,7 +50,7 @@ jobs:
       combined-name: firmware
       release-summary: ${{ github.event.release.body || '' }}
       release-url: ${{ github.event.release.html_url || '' }}
-      release-version: ${{ github.event.release.tag_name || inputs.version || 'dev' }}
+      release-version: ${{ github.event.release.tag_name || github.ref_name || 'dev' }}
 
   build-site:
     name: Build Site
