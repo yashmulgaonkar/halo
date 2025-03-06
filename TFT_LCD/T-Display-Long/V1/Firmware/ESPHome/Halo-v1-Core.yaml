@@ -145,6 +145,11 @@ i2c:
   - sda: 15
     scl: 10
     id: touch_i2c
+
+output:
+  - platform: ledc
+    pin: 1
+    id: backlight
   
 display:
   - platform: axs15231
@@ -155,7 +160,6 @@ display:
       width: 180
     cs_pin: 12
     reset_pin: 16
-    backlight_pin: 1
     rotation: 0
     auto_clear_enabled: false
 
@@ -906,6 +910,10 @@ light:
           name: Rainbow Effect With Custom Values
           speed: 10
           width: 50
+  - platform: monochromatic
+    output: backlight
+    name: "Display Backlight"
+    restore_mode: ALWAYS_ON
 
 lvgl:
   displays:
