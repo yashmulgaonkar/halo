@@ -14,14 +14,14 @@ jobs:
     name: Build and Release Firmware
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.1.7
 
       - name: Set uppercase DEVICE_NAME
         run: |
           echo "UPPERCASE_DEVICE_NAME=$(echo $DEVICE_NAME | tr '[:lower:]' '[:upper:]')" >> $GITHUB_ENV
 
       - name: Build Firmware
-        uses: esphome/build-action@v3.0.0
+        uses: esphome/build-action@v3.1.0
         id: esphome-build
         with:
           yaml_file: TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml
