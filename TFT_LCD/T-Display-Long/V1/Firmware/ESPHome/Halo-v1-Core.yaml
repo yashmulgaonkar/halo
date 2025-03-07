@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.3.5.2"
+  version: "25.3.5.3"
   device_description: ${name} - v${version}.
 
 psram:
@@ -51,6 +51,13 @@ switch:
     id: startup_light_blink
     icon: mdi:lightbulb
     restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+    entity_category: "config"
+  - platform: template
+    name: "24h Clock Format"
+    id: time_format
+    icon: mdi:clock-digital
+    restore_mode: RESTORE_DEFAULT_OFF
     optimistic: true
     entity_category: "config"
 
@@ -249,7 +256,12 @@ script:
             if (hour_12 == 0) {
               hour_12 = 12; // 12 AM/PM should be displayed as 12, not 0
             }
-            snprintf(time_buf, sizeof(time_buf), "%2d:%02d%s", hour_12, now.minute, is_pm ? "PM" : "AM");
+            if(id(time_format).state) {
+              snprintf(time_buf, sizeof(time_buf), "%02d:%02d", now.hour, now.minute);
+            }
+            else {
+              snprintf(time_buf, sizeof(time_buf), "%2d:%02d%s", hour_12, now.minute, is_pm ? "PM" : "AM");
+            }
             return time_buf;
 
 number:
