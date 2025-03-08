@@ -157,6 +157,8 @@ output:
   - platform: ledc
     pin: 1
     id: backlight
+    #Datasheet suggests low-frequency PWM. Should prevent stability issues.
+    frequency: 100Hz
   
 display:
   - platform: axs15231
