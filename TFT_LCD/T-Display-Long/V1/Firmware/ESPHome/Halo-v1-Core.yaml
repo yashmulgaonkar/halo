@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.3.5.3"
+  version: "25.3.10.1"
   device_description: ${name} - v${version}.
 
 psram:
@@ -157,6 +157,7 @@ output:
   - platform: ledc
     pin: 1
     id: backlight
+    frequency: 100Hz  #Datasheet suggests low-frequency PWM. Should prevent stability issues.
   
 display:
   - platform: axs15231
