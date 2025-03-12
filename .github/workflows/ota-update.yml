@@ -95,7 +95,7 @@ jobs:
           path: firmware
 
       - name: Copy Firmware and Manifest
-        run: |
+        run: |-
           mkdir -p output/firmware
           cp -r firmware/${{ needs.build-firmware.outputs.version }}/* output/firmware/
 
