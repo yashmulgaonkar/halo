@@ -97,7 +97,7 @@ jobs:
       - name: Copy Firmware and Manifest
         run: |
           mkdir -p output/firmware
-          cp -r firmware/* output/firmware/
+          cp -r firmware/${{ needs.build-firmware.outputs.version }}/* output/firmware/
 
       - name: Download Site Artifact
         uses: actions/download-artifact@v4.1.8
