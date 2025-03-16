@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.3.10.1"
+  version: "25.3.15.1"
   device_description: ${name} - v${version}.
 
 psram:
@@ -158,7 +158,11 @@ output:
     pin: 1
     id: backlight
     frequency: 100Hz  #Datasheet suggests low-frequency PWM. Should prevent stability issues.
-  
+    
+sy6970:
+  i2c_id: i2c_bus
+  state_led_enable: false  # To turn off the blinking green status LED
+
 display:
   - platform: axs15231
     id: lily_display
