@@ -160,7 +160,7 @@ output:
     frequency: 100Hz  #Datasheet suggests low-frequency PWM. Should prevent stability issues.
     
 sy6970:
-  i2c_id: i2c_bus
+  i2c_id: touch_i2c
   state_led_enable: false  # To turn off the blinking green status LED
 
 display:
