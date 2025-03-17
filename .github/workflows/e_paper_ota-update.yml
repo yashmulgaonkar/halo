@@ -1,4 +1,4 @@
-name: Build and Release Halo Firmware
+name: Build and Release Halo EPD Firmware
 
 env:
   DEVICE_NAME: halo
