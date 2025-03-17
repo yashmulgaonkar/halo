@@ -15,6 +15,10 @@ esphome:
     name: "yashmulgaonkar.Halo_EPD"
     version: "${version}"
 
+dashboard_import:
+  package_import_url: github://yashmulgaonkar/halo/E-Paper/Waveshare_BWR/V1/Firmware/ESPHome/Halo_EPD.yaml@main
+  import_full_config: true
+
 ota:
   - platform: esphome
     id: ota_default
