@@ -122,7 +122,7 @@ interval:
           then:
             - light.turn_on:
                 id: rgb_light
-                effect: "Rainbow Effect With Custom Values"
+                effect: "Rainbow Effect"
             - lambda: 'id(cycleCounter) += 1;'
 
   - interval: 1s
