@@ -1,6 +1,6 @@
 #Define Project
 substitutions:
-  name: halo_epd
+  name: halo-epd
   version: "25.3.16.2"
   device_description: ${name} - v${version}.
 
@@ -296,26 +296,26 @@ sensor:
     id: mics4514
     nitrogen_dioxide:
       name: Nitrogen Dioxide
-      id: "no2"
-      on_value:
-        then:
-          - lvgl.label.update:
-              id: no2_value
-              text: !lambda |-
-                static char buffer[10];
-                snprintf(buffer, sizeof(buffer), "%.02f", x);
-                return buffer;
-          - if:
-              condition:
-                lambda: "return x <= 0.2;"  # Safe level typical indoors (ppm)
-              then:
-                - lvgl.label.update:
-                    id: no2_value
-                    text_color: my_black
-              else:
-                - lvgl.label.update:
-                    id: no2_value
-                    text_color: my_red                        
+      # id: "no2"
+      # on_value:
+      #   then:
+      #     - lvgl.label.update:
+      #         id: no2_value
+      #         text: !lambda |-
+      #           static char buffer[10];
+      #           snprintf(buffer, sizeof(buffer), "%.02f", x);
+      #           return buffer;
+      #     - if:
+      #         condition:
+      #           lambda: "return x <= 0.2;"  # Safe level typical indoors (ppm)
+      #         then:
+      #           - lvgl.label.update:
+      #               id: no2_value
+      #               text_color: my_black
+      #         else:
+      #           - lvgl.label.update:
+      #               id: no2_value
+      #               text_color: my_red                        
     carbon_monoxide:
       name: Carbon Monoxide
       id: "co"
@@ -340,95 +340,95 @@ sensor:
                     text_color: my_red                    
     hydrogen:
       name: Hydrogen
-      id: "h2"
-      on_value:
-        then:
-          - lvgl.label.update:
-              id: h2_value
-              text: !lambda |-
-                static char buffer[10];
-                snprintf(buffer, sizeof(buffer), "%.02f", x);
-                return buffer;
-          - if:
-              condition:
-                lambda: "return x <= 0.4;"  # Safe level typical indoors
-              then:
-                - lvgl.label.update:
-                    id: h2_value
-                    text_color: my_black
-              else:
-                - lvgl.label.update:
-                    id: h2_value
-                    text_color: my_red
+      # id: "h2"
+      # on_value:
+      #   then:
+      #     - lvgl.label.update:
+      #         id: h2_value
+      #         text: !lambda |-
+      #           static char buffer[10];
+      #           snprintf(buffer, sizeof(buffer), "%.02f", x);
+      #           return buffer;
+      #     - if:
+      #         condition:
+      #           lambda: "return x <= 0.4;"  # Safe level typical indoors
+      #         then:
+      #           - lvgl.label.update:
+      #               id: h2_value
+      #               text_color: my_black
+      #         else:
+      #           - lvgl.label.update:
+      #               id: h2_value
+      #               text_color: my_red
 
     methane:
       name: Methane
-      id: "ch4"
-      on_value:
-        then:
-          - lvgl.label.update:
-              id: ch4_value
-              text: !lambda |-
-                static char buffer[10];
-                snprintf(buffer, sizeof(buffer), "%.02f", x);
-                return buffer;
-          - if:
-              condition:
-                lambda: "return x <= 2.0;"  # Typical safe level
-              then:
-                - lvgl.label.update:
-                    id: ch4_value
-                    text_color: my_black
-              else:
-                - lvgl.label.update:
-                    id: ch4_value
-                    text_color: my_red
+      # id: "ch4"
+      # on_value:
+      #   then:
+      #     - lvgl.label.update:
+      #         id: ch4_value
+      #         text: !lambda |-
+      #           static char buffer[10];
+      #           snprintf(buffer, sizeof(buffer), "%.02f", x);
+      #           return buffer;
+      #     - if:
+      #         condition:
+      #           lambda: "return x <= 2.0;"  # Typical safe level
+      #         then:
+      #           - lvgl.label.update:
+      #               id: ch4_value
+      #               text_color: my_black
+      #         else:
+      #           - lvgl.label.update:
+      #               id: ch4_value
+      #               text_color: my_red
                                       
     ethanol:
       name: Ethanol
-      id: "ethanol"
-      on_value:
-        then:
-          - lvgl.label.update:
-              id: ethanol_value
-              text: !lambda |-
-                static char buffer[10];
-                snprintf(buffer, sizeof(buffer), "%.02f", x);
-                return buffer;
-          - if:
-              condition:
-                lambda: "return x <= 1.5;"  # Safe level
-              then:
-                - lvgl.label.update:
-                    id: ethanol_value
-                    text_color: my_black
-              else:
-                - lvgl.label.update:
-                    id: ethanol_value
-                    text_color: my_red
+      # id: "ethanol"
+      # on_value:
+      #   then:
+      #     - lvgl.label.update:
+      #         id: ethanol_value
+      #         text: !lambda |-
+      #           static char buffer[10];
+      #           snprintf(buffer, sizeof(buffer), "%.02f", x);
+      #           return buffer;
+      #     - if:
+      #         condition:
+      #           lambda: "return x <= 1.5;"  # Safe level
+      #         then:
+      #           - lvgl.label.update:
+      #               id: ethanol_value
+      #               text_color: my_black
+      #         else:
+      #           - lvgl.label.update:
+      #               id: ethanol_value
+      #               text_color: my_red
                     
     ammonia:
       name: Ammonia
-      id: "nh3"
-      on_value:
-        then:
-          - lvgl.label.update:
-              id: nh3_value
-              text: !lambda |-
-                static char buffer[10];
-                snprintf(buffer, sizeof(buffer), "%.02f", x);
-                return buffer;
-          - if:
-              condition:
-                lambda: "return x <= 1.0;"  # Safe level typical indoors
-              then:
-                - lvgl.label.update:
-                    id: nh3_value
-                    text_color: my_black
-              else:
-                - lvgl.label.update:
-                    id: nh3_value
-                    text_color: my_red
+      # id: "nh3"
+      # on_value:
+      #   then:
+      #     - lvgl.label.update:
+      #         id: nh3_value
+      #         text: !lambda |-
+      #           static char buffer[10];
+      #           snprintf(buffer, sizeof(buffer), "%.02f", x);
+      #           return buffer;
+      #     - if:
+      #         condition:
+      #           lambda: "return x <= 1.0;"  # Safe level typical indoors
+      #         then:
+      #           - lvgl.label.update:
+      #               id: nh3_value
+      #               text_color: my_black
+      #         else:
+      #           - lvgl.label.update:
+      #               id: nh3_value
+      #               text_color: my_red
                             
     update_interval: 10s
     i2c_id: lily_i2c
@@ -451,14 +451,14 @@ sensor:
       name: "PM <1µm Weight concentration"
       id: pm_1_0
       accuracy_decimals: 1
-      on_value:
-        then:
-          - lvgl.label.update:
-              id: pm1_value
-              text: !lambda |-
-                static char buffer[10];
-                snprintf(buffer, sizeof(buffer), "%.01f", x);
-                return buffer;          
+      # on_value:
+      #   then:
+      #     - lvgl.label.update:
+      #         id: pm1_value
+      #         text: !lambda |-
+      #           static char buffer[10];
+      #           snprintf(buffer, sizeof(buffer), "%.01f", x);
+      #           return buffer;          
     pm_2_5:
       name: "PM <2.5µm Weight concentration"
       id: pm_2_5
@@ -538,26 +538,26 @@ sensor:
       name: "PM <4µm Weight concentration"
       id: pm_4_0
       accuracy_decimals: 1
-      on_value:
-        then:
-          - lvgl.label.update:
-              id: pm4_value
-              text: !lambda |-
-                static char buffer[10];
-                snprintf(buffer, sizeof(buffer), "%.01f", x);
-                return buffer;       
+      # on_value:
+      #   then:
+      #     - lvgl.label.update:
+      #         id: pm4_value
+      #         text: !lambda |-
+      #           static char buffer[10];
+      #           snprintf(buffer, sizeof(buffer), "%.01f", x);
+      #           return buffer;       
     pm_10_0:
       name: "PM <10µm Weight concentration"
       id: pm_10_0
       accuracy_decimals: 1
-      on_value:
-        then:
-          - lvgl.label.update:
-              id: pm10_value
-              text: !lambda |-
-                static char buffer[10];
-                snprintf(buffer, sizeof(buffer), "%.01f", x);
-                return buffer;       
+      # on_value:
+      #   then:
+      #     - lvgl.label.update:
+      #         id: pm10_value
+      #         text: !lambda |-
+      #           static char buffer[10];
+      #           snprintf(buffer, sizeof(buffer), "%.01f", x);
+      #           return buffer;       
     temperature:
       name: "SEN55 Temperature"
       accuracy_decimals: 1
@@ -792,6 +792,7 @@ lvgl:
             text: "00:00AM"
 # AQI box
         - obj:
+            id: aqi_widget
             x: 0
             y: 16
             width: 127
@@ -841,7 +842,7 @@ lvgl:
             text_color: my_black
             x: 0
             y: -67
-            text: "°F"
+            text: "\u00B0F"
         - label:
             id: temperature_value
             align: RIGHT_MID
