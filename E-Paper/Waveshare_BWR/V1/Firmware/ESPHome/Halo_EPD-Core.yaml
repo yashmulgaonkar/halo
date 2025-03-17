@@ -16,9 +16,6 @@ psram:
   mode: octal
   speed: 80MHz
 
-esp32_improv:
-  authorizer: none
-
 external_components:
   source: github://pr#6226
   components: [waveshare_epaper]
