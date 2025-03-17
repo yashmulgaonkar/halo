@@ -1,0 +1,36 @@
+esphome:
+  name: Halo_EPD
+  friendly_name: Halo Air Quality Sensor EPD
+  name_add_mac_suffix: true
+  platformio_options:
+    upload_speed: 921600
+    build_unflags: -Werror=all
+    board_build.flash_mode: dio
+    board_build.f_flash: 40000000L
+    board_build.f_cpu: 240000000L
+
+  min_version: 2025.2.0
+
+  project:
+    name: "yashmulgaonkar.Halo_EPD"
+    version: "${version}"
+
+ota:
+  - platform: esphome
+    id: ota_default
+
+wifi:
+  on_connect:
+    - delay: 5s # Gives time for improv results to be transmitted
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Halo Hotspot"
+
+packages:
+  remote_package:
+    url: https://github.com/yashmulgaonkar/halo/
+    ref: main
+    files:
+      - E-Paper/Waveshare_BWR/V1/Firmware/ESPHome/Halo_EPD-Core.yaml
+    refresh: 0d

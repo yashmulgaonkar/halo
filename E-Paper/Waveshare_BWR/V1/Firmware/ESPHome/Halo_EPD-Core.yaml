@@ -1,0 +1,501 @@
+#Define Project
+substitutions:
+  name: halo_epd
+  version: "25.3.16.1"
+  device_description: ${name} - v${version}.
+
+esp32:
+  variant: esp32s3
+  board: esp32-s3-devkitc-1
+  flash_size: 4MB
+  framework:
+    type: esp-idf
+    version: latest
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+esp32_improv:
+  authorizer: none
+
+external_components:
+  source: github://pr#6226
+  components: [waveshare_epaper]
+
+# Enable logging
+logger:
+  level: DEBUG
+
+web_server:
+  port: 80  
+
+# Enable Home Assistant API
+api:
+  on_client_connected:
+      - delay: 1s
+      - light.turn_off: rgb_light
+      - lambda: 'id(cycleCounter) = 30;'    
+  services:
+    #Co2 Calibration Service
+    - service: calibrate_co2_value
+      variables:
+        co2_ppm: float
+      then:
+        - scd4x.perform_forced_calibration:
+            value: !lambda "return co2_ppm;"
+            id: scd40
+    - service: sen55_clean
+      then:
+        - sen5x.start_fan_autoclean: sen55    
+
+captive_portal:
+
+font:
+  - file: 'gfonts://Roboto'
+    id: roboto12
+    size: 12
+    bpp: 1
+  - file: 'gfonts://Rubik@500'
+    id: rubik524
+    size: 24
+    bpp: 1
+  - file: 'gfonts://Rubik@500'
+    id: rubik414
+    size: 14        
+    bpp: 1
+  - file: 'gfonts://Lato@700'
+    id: lato424
+    bpp: 1
+    size: 24              
+
+color:
+  - id: my_black
+    hex: "FFFFFF"
+  - id: my_red
+    hex: "FF0000"
+  - id: my_white
+    hex: "000000"  
+
+spi:  
+  mosi_pin: GPIO6
+  clk_pin: GPIO5
+
+interval:
+  - interval: 10s
+    then:    
+      if:
+        condition:
+          wifi.connected:
+        then:
+          - lvgl.widget.update:
+              id: wifi_stat
+              text_color: my_black
+          - lvgl.widget.show:
+              id: ym_image              
+        else:
+          - lvgl.widget.update:
+              id: wifi_stat
+              text_color: my_red
+
+  - interval: 1s
+    then:
+      - script.execute: time_update
+
+time:
+  - platform: homeassistant
+    id: ha_time
+    on_time_sync:
+      - script.execute: time_update
+
+script:
+  - id: time_update
+    then:
+      - lvgl.label.update:
+          id: timeVal
+          text: !lambda |-
+            static char time_buf[17];
+            auto now = id(ha_time).now();
+            bool is_pm = now.hour >= 12;
+            int hour_12 = now.hour % 12;
+            if (hour_12 == 0) {
+              hour_12 = 12; // 12 AM/PM should be displayed as 12, not 0
+            }
+            snprintf(time_buf, sizeof(time_buf), "%2d:%02d%s", hour_12, now.minute, is_pm ? "PM" : "AM");
+            return time_buf;
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: rgb_light
+    name: "Neopixel"
+    pin: GPIO21
+    default_transition_length: 0s
+    chipset: WS2812
+    num_leds: 1
+    rgb_order: rgb
+    effects:
+      - pulse:
+          name: "Slow Pulse"
+          transition_length: 500ms
+          update_interval: 500ms
+          min_brightness: 10%
+          max_brightness: 50%
+      - addressable_rainbow:
+          name: Rainbow Effect
+          speed: 50
+          width: 1
+
+display:
+  - platform: waveshare_epaper
+    id: epaper_display
+    model: 2.90in3c
+    cs_pin: GPIO4
+    dc_pin: GPIO3
+    reset_pin: GPIO2
+    busy_pin: GPIO1
+    reset_duration: 2ms
+    update_interval: 30s
+
+image:
+  - file: https://yashmulgaonkar.github.io/assets/YM2_epd.png
+    id: ym_logo
+    type: RGB565
+
+i2c:
+  - sda: GPIO7
+    scl: GPIO8
+    id: lily_i2c
+
+sensor:
+  - platform: uptime
+    name: Uptime
+    id: sys_uptime
+    update_interval: 60s
+
+  - platform: wifi_signal
+    name: RSSI
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: "diagnostic"
+      
+  - platform: scd4x
+    id: scd40
+    co2:
+      name: "CO2"
+      id: "co2"
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: co2_value
+              text: !lambda |-
+                static char buffer[10];
+                snprintf(buffer, sizeof(buffer), "%d", (int)x);
+                return buffer;
+          - if:
+              condition:
+                lambda: "return x < 1500;"
+              then:
+                - lvgl.label.update:
+                    id: co2_value
+                    text_color: my_black                     
+              else:
+                - if:
+                    condition:
+                      lambda: "return x <= 1500;"
+                    then:
+                      - lvgl.label.update:
+                          id: co2_value
+                          text_color: my_red                                                                            
+    automatic_self_calibration: false
+    update_interval: 10s
+    measurement_mode: "periodic"
+    i2c_id: lily_i2c
+    # ambient_pressure_compensation_source: bme280pressure
+
+lvgl:
+  displays: #296x128
+    - epaper_display    
+  buffer_size: 100%
+  pages:            
+    - id: main_page
+      bg_color: my_white
+      scrollbar_mode: "OFF"
+      widgets:
+# Wifi icon
+        - label:
+            id: wifi_stat
+            align: CENTER
+            text_font: montserrat_10
+            text_color: my_red
+            x: 40
+            y: -140
+            text: "\uF1EB"
+# YM Logo                                
+        - image:
+            id: ym_image          
+            src: ym_logo
+            align: CENTER
+            x: 55
+            y: -140
+# Time Value
+        - label:
+            id: timeVal
+            align: LEFT_MID
+            text_font: roboto12
+            text_color: my_black
+            x: 2
+            y: -140
+            text: "00:00AM"
+# AQI box
+        - obj:
+            x: 0
+            y: 16
+            width: 127
+            height: 40
+            bg_color: my_black
+            radius: 10
+        - label:
+            id: aqi_label
+            align: LEFT_MID
+            text_font: rubik524
+            text_color: my_white
+            x: 2
+            y: -113
+            text: "AQI:"
+        - label:
+            id: aqi_value
+            align: LEFT_MID
+            text_font: lato424
+            text_color: my_white
+            long_mode: WRAP
+            x: 60
+            y: -113
+            text: "10"
+# Temperature box
+        - obj:
+            x: 0
+            y: 56
+            width: 127
+            height: 40
+            bg_opa: TRANSP
+            radius: 0
+            border_color: my_black
+            border_width: 1
+            border_side: BOTTOM
+        - label:
+            id: tempStr
+            align: LEFT_MID
+            text_font: rubik414
+            text_color: my_black
+            x: 2
+            y: -84
+            text: "TEMP:"
+        - label:
+            id: tempUnitStr
+            align: RIGHT_MID
+            text_font: roboto12
+            text_color: my_black
+            x: 0
+            y: -67
+            text: "°F"
+        - label:
+            id: temperature_value
+            align: RIGHT_MID
+            text_font: lato424
+            text_color: my_black
+            long_mode: WRAP
+            x: -30
+            y: -67
+            text: "74.9"            
+# CO2 box                         
+        - obj:
+            x: 0
+            y: 96
+            width: 127
+            height: 40
+            bg_opa: TRANSP
+            radius: 0
+            border_color: my_black
+            border_width: 1
+            border_side: BOTTOM
+        - label:
+            id: CO2Str
+            align: LEFT_MID
+            text_font: rubik414
+            text_color: my_black
+            x: 2
+            y: -44
+            text: "CO2:"
+        - label:
+            id: CO2UnitStr
+            align: RIGHT_MID
+            text_font: roboto12
+            text_color: my_black
+            x: 0
+            y: -27
+            text: "PPM"
+        - label:
+            id: co2_value
+            align: RIGHT_MID
+            text_font: lato424
+            text_color: my_black
+            long_mode: WRAP
+            x: -30
+            y: -27
+            text: "533"            
+# PM25 box                          
+        - obj:
+            x: 0
+            y: 136
+            width: 127
+            height: 40
+            bg_opa: TRANSP
+            radius: 0
+            border_color: my_black
+            border_width: 1
+            border_side: BOTTOM
+        - label:
+            id: PM25Str
+            align: LEFT_MID
+            text_font: rubik414
+            text_color: my_black
+            x: 2
+            y: -4
+            text: "PM2.5:"
+        - label:
+            id: PM25UnitStr1
+            align: RIGHT_MID
+            text_font: roboto12
+            text_color: my_black
+            x: 0
+            y: -2
+            text: "ug"
+        - line:
+            points:
+              - 110, 155
+              - 128, 155
+            line_width: 1
+            line_color: my_black
+        - label:
+            id: PM25UnitStr2
+            align: RIGHT_MID
+            text_font: roboto12
+            text_color: my_black
+            x: 0
+            y: 16
+            text: "m3"
+        - label:
+            id: pm25_value
+            align: RIGHT_MID
+            text_font: lato424
+            text_color: my_black
+            long_mode: WRAP
+            x: -30
+            y: 13
+            text: "1.8"            
+# VOC box                                      
+        - obj:
+            x: 0
+            y: 176
+            width: 127
+            height: 40
+            bg_opa: TRANSP
+            radius: 0
+            border_color: my_black
+            border_width: 1
+            border_side: BOTTOM
+        - label:
+            id: VOCStr
+            align: LEFT_MID
+            text_font: rubik414
+            text_color: my_black
+            x: 2
+            y: 36
+            text: "VOC:"
+        - label:
+            id: VOCUnitStr
+            align: RIGHT_MID
+            text_font: roboto12
+            text_color: my_black
+            x: 0
+            y: 53
+            text: "IDX"
+        - label:
+            id: voc_value
+            align: RIGHT_MID
+            text_font: lato424
+            text_color: my_red
+            long_mode: WRAP
+            x: -30
+            y: 53
+            text: "153"            
+# CO box                                     
+        - obj:
+            x: 0
+            y: 216
+            width: 127
+            height: 40
+            bg_opa: TRANSP
+            radius: 0
+            border_color: my_black
+            border_width: 1
+            border_side: BOTTOM
+        - label:
+            id: COStr
+            align: LEFT_MID
+            text_font: rubik414
+            text_color: my_black
+            x: 2
+            y: 76
+            text: "CO:"
+        - label:
+            id: COUnitStr
+            align: RIGHT_MID
+            text_font: roboto12
+            text_color: my_black
+            x: 0
+            y: 93
+            text: "PPM"
+        - label:
+            id: co_value
+            align: RIGHT_MID
+            text_font: lato424
+            text_color: my_black
+            long_mode: WRAP
+            x: -30
+            y: 93
+            text: "0.87"              
+# RH box                         
+        - obj:
+            x: 0
+            y: 256
+            width: 127
+            height: 40
+            bg_opa: TRANSP
+            radius: 0
+            border_side: NONE
+        - label:
+            id: RHStr
+            align: LEFT_MID
+            text_font: rubik414
+            text_color: my_black
+            x: 2
+            y: 116
+            text: "RH:"
+        - label:
+            id: RHUnitStr
+            align: RIGHT_MID
+            text_font: roboto12
+            text_color: my_black
+            x: 0
+            y: 133
+            text: "%"
+        - label:
+            id: rh_value
+            align: RIGHT_MID
+            text_font: lato424
+            text_color: my_black
+            long_mode: WRAP
+            x: -30
+            y: 133
+            text: "42"                                                                                                                                     

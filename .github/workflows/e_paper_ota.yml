@@ -1,0 +1,119 @@
+name: Build and Release Halo Firmware
+
+env:
+  DEVICE_NAME: halo
+
+on:
+  push:
+    paths:
+      - 'E-Paper/**'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The version of the firmware to build'
+        required: true
+  release:
+    types: [published]
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'  # Only create a release on push
+    permissions:
+      contents: write  # Ensure permissions for writing to the repo
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4.1.7
+
+      - name: Get Version
+        id: get_version
+        run: |
+          version=$(awk '/substitutions:/ {found=1} found && /version:/ {print $2; exit}' E-Paper/Waveshare_BWR/V1/Firmware/ESPHome/Halo_EPD-Core.yaml | tr -d '"')
+          echo "project_version=$version" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  # Use PAT for authentication
+        with:
+          tag_name: ${{ env.project_version }}
+          release_name: "Release ${{ env.project_version }}"
+          draft: false
+          prerelease: false
+          body: "Auto-generated release from GitHub Actions."
+
+  build-firmware:
+    name: Build And Release
+    needs: create-release
+    uses: esphome/workflows/.github/workflows/build.yml@main
+    with:
+      files: |
+        TE-Paper/Waveshare_BWR/V1/Firmware/ESPHome/Halo_EPD.yaml
+      esphome-version: stable
+      combined-name: firmware
+      release-summary: ${{ github.event.release.body || '' }}
+      release-url: ${{ github.event.release.html_url || '' }}
+      release-version: ${{ github.event.release.tag_name || github.ref_name || 'dev' }}
+
+  build-site:
+    name: Build Site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4.1.7
+
+      - name: Build Site
+        uses: actions/jekyll-build-pages@v1.0.13
+        with:
+          source: ./static
+          destination: ./output
+
+      - name: Upload Site Artifact
+        uses: actions/upload-artifact@v4.3.6
+        with:
+          name: site
+          path: output
+
+  publish:
+    name: Publish to GitHub Pages
+    runs-on: ubuntu-latest
+    needs:
+      - build-firmware
+      - build-site
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download Firmware Artifact
+        uses: actions/download-artifact@v4.1.8
+        with:
+          name: firmware
+          path: firmware
+
+      - name: Copy Firmware and Manifest
+        run: |-
+          mkdir -p output/firmware
+          cp -r firmware/${{ needs.build-firmware.outputs.version }}/* output/firmware/
+
+      - name: Download Site Artifact
+        uses: actions/download-artifact@v4.1.8
+        with:
+          name: site
+          path: output
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3.0.1
+        with:
+          path: output
+          retention-days: 1
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5.0.0
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4.0.5
