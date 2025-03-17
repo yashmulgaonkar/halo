@@ -1,12 +1,12 @@
-name: Build and Release Halo Firmware
+name: Build and Release Halo TFT LCD Firmware
 
 env:
   DEVICE_NAME: halo
 
 on:
   push:
-    branches:
-      - main
+    paths:
+      - 'TFT_LCD/**'
   workflow_dispatch:
     inputs:
       version:
