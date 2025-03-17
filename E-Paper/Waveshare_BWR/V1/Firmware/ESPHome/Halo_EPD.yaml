@@ -1,5 +1,5 @@
 esphome:
-  name: Halo_EPD
+  name: halo_epd
   friendly_name: Halo Air Quality Sensor EPD
   name_add_mac_suffix: true
   platformio_options:
