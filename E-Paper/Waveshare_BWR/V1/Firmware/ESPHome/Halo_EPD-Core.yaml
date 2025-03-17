@@ -835,7 +835,7 @@ lvgl:
             y: -84
             text: "TEMP:"
         - label:
-            id: tempUnitStr
+            id: temperature_units
             align: RIGHT_MID
             text_font: roboto12
             text_color: my_black
