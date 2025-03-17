@@ -102,7 +102,7 @@ interval:
         then:
           - lvgl.widget.update:
               id: wifi_stat
-              text_color: my_green
+              text_color: my_black
           - lvgl.widget.show:
               id: ym_image              
         else:
@@ -277,31 +277,15 @@ sensor:
                 return buffer;
           - if:
               condition:
-                lambda: "return x <= 600;"
+                lambda: "return x <= 1000;"
               then:
                 - lvgl.label.update:
                     id: co2_value
-                    text_color: my_green                     
+                    text_color: my_black                     
               else:
-                - if:
-                    condition:
-                      lambda: "return x <= 1000;"
-                    then:
-                      - lvgl.label.update:
-                          id: co2_value
-                          text_color: my_yellow                         
-                    else:
-                      - if:
-                          condition:
-                            lambda: "return x <= 1500;"
-                          then:
-                            - lvgl.label.update:
-                                id: co2_value
-                                text_color: my_orange                                 
-                          else:
-                            - lvgl.label.update:
-                                id: co2_value
-                                text_color: my_red                                                                              
+                - lvgl.label.update:
+                    id: co2_value
+                    text_color: my_red                                                                                                      
     automatic_self_calibration: false
     update_interval: 10s
     measurement_mode: "periodic"
@@ -323,31 +307,15 @@ sensor:
                 return buffer;
           - if:
               condition:
-                lambda: "return x <= 0.03;"  # Safe level typical indoors (ppm)
+                lambda: "return x <= 0.2;"  # Safe level typical indoors (ppm)
               then:
                 - lvgl.label.update:
                     id: no2_value
-                    text_color: my_green
+                    text_color: my_black
               else:
-                - if:
-                    condition:
-                      lambda: "return x <= 0.06;"  # Slightly elevated level (ppm)
-                    then:
-                      - lvgl.label.update:
-                          id: no2_value
-                          text_color: my_yellow
-                    else:
-                      - if:
-                          condition:
-                            lambda: "return x <= 0.1;"  # Moderately high level (ppm)
-                          then:
-                            - lvgl.label.update:
-                                id: no2_value
-                                text_color: my_orange
-                          else:
-                            - lvgl.label.update:
-                                id: no2_value
-                                text_color: my_red  # High level, unsafe indoors (ppm)                          
+                - lvgl.label.update:
+                    id: no2_value
+                    text_color: my_red                        
     carbon_monoxide:
       name: Carbon Monoxide
       id: "co"
@@ -365,27 +333,11 @@ sensor:
               then:
                 - lvgl.label.update:
                     id: co_value
-                    text_color: my_green
+                    text_color: my_black
               else:
-                - if:
-                    condition:
-                      lambda: "return x <= 30;"
-                    then:
-                      - lvgl.label.update:
-                          id: co_value
-                          text_color: my_yellow
-                    else:
-                      - if:
-                          condition:
-                            lambda: "return x <= 36;"
-                          then:
-                            - lvgl.label.update:
-                                id: co_value
-                                text_color: my_orange
-                          else:
-                            - lvgl.label.update:
-                                id: co_value
-                                text_color: my_red                      
+                - lvgl.label.update:
+                    id: co_value
+                    text_color: my_red                    
     hydrogen:
       name: Hydrogen
       id: "h2"
@@ -403,27 +355,12 @@ sensor:
               then:
                 - lvgl.label.update:
                     id: h2_value
-                    text_color: my_green
+                    text_color: my_black
               else:
-                - if:
-                    condition:
-                      lambda: "return x <= 1.0;"  # Slightly elevated level
-                    then:
-                      - lvgl.label.update:
-                          id: h2_value
-                          text_color: my_yellow
-                    else:
-                      - if:
-                          condition:
-                            lambda: "return x <= 2.0;"  # Moderately high level
-                          then:
-                            - lvgl.label.update:
-                                id: h2_value
-                                text_color: my_orange
-                          else:
-                            - lvgl.label.update:
-                                id: h2_value
-                                text_color: my_red  # High level, unsafe indoors                       
+                - lvgl.label.update:
+                    id: h2_value
+                    text_color: my_red
+
     methane:
       name: Methane
       id: "ch4"
@@ -441,19 +378,12 @@ sensor:
               then:
                 - lvgl.label.update:
                     id: ch4_value
-                    text_color: my_green
+                    text_color: my_black
               else:
-                - if:
-                    condition:
-                      lambda: "return x <= 10.0;"  # Elevated but not critical
-                    then:
-                      - lvgl.label.update:
-                          id: ch4_value
-                          text_color: my_yellow
-                    else:
-                      - lvgl.label.update:
-                          id: ch4_value
-                          text_color: my_red  # Critical level                                        
+                - lvgl.label.update:
+                    id: ch4_value
+                    text_color: my_red
+                                      
     ethanol:
       name: Ethanol
       id: "ethanol"
@@ -467,31 +397,16 @@ sensor:
                 return buffer;
           - if:
               condition:
-                lambda: "return x <= 0.5;"  # Safe level
+                lambda: "return x <= 1.5;"  # Safe level
               then:
                 - lvgl.label.update:
                     id: ethanol_value
-                    text_color: my_green
+                    text_color: my_black
               else:
-                - if:
-                    condition:
-                      lambda: "return x <= 1.5;"  # Slightly elevated
-                    then:
-                      - lvgl.label.update:
-                          id: ethanol_value
-                          text_color: my_yellow
-                    else:
-                      - if:
-                          condition:
-                            lambda: "return x <= 3.0;"  # Moderate level
-                          then:
-                            - lvgl.label.update:
-                                id: ethanol_value
-                                text_color: my_orange
-                          else:
-                            - lvgl.label.update:
-                                id: ethanol_value
-                                text_color: my_red  # High level                       
+                - lvgl.label.update:
+                    id: ethanol_value
+                    text_color: my_red
+                    
     ammonia:
       name: Ammonia
       id: "nh3"
@@ -505,31 +420,16 @@ sensor:
                 return buffer;
           - if:
               condition:
-                lambda: "return x <= 0.5;"  # Safe level typical indoors
+                lambda: "return x <= 1.0;"  # Safe level typical indoors
               then:
                 - lvgl.label.update:
                     id: nh3_value
-                    text_color: my_green
+                    text_color: my_black
               else:
-                - if:
-                    condition:
-                      lambda: "return x <= 1.0;"  # Slightly elevated level
-                    then:
-                      - lvgl.label.update:
-                          id: nh3_value
-                          text_color: my_yellow
-                    else:
-                      - if:
-                          condition:
-                            lambda: "return x <= 2.0;"  # Moderately high level
-                          then:
-                            - lvgl.label.update:
-                                id: nh3_value
-                                text_color: my_orange
-                          else:
-                            - lvgl.label.update:
-                                id: nh3_value
-                                text_color: my_red  # High level, unsafe indoors                            
+                - lvgl.label.update:
+                    id: nh3_value
+                    text_color: my_red
+                            
     update_interval: 10s
     i2c_id: lily_i2c
     address: 0x75
@@ -538,10 +438,7 @@ sensor:
     i2c_id: lily_i2c
     temperature:
       name: "BME280 Temperature"
-      oversampling: 2x
-      # filters:
-      #   - lambda: |-
-      #       return x;  
+      oversampling: 2x 
     pressure:
       name: "BME280 Pressure"
       id: bme280pressure
@@ -700,27 +597,12 @@ sensor:
               then:
                 - lvgl.label.update:
                     id: temperature_value
-                    text_color: my_green
+                    text_color: my_black
               else:
-                - if:
-                    condition:
-                      lambda: "return (x > 24 && x <= 27) || (x >= 16 && x < 18);"  # Slightly uncomfortable (°C)
-                    then:
-                      - lvgl.label.update:
-                          id: temperature_value
-                          text_color: my_yellow
-                    else:
-                      - if:
-                          condition:
-                            lambda: "return (x > 27 && x <= 30) || (x >= 10 && x < 16);"  # Moderately uncomfortable (°C)
-                          then:
-                            - lvgl.label.update:
-                                id: temperature_value
-                                text_color: my_orange
-                          else:
-                            - lvgl.label.update:
-                                id: temperature_value
-                                text_color: my_red  # Extreme discomfort or unsafe (°C)
+                - lvgl.label.update:
+                    id: temperature_value
+                    text_color: my_red
+
     humidity:
       name: "SEN55 Humidity"
       filters:
@@ -740,27 +622,11 @@ sensor:
               then:
                 - lvgl.label.update:
                     id: rh_value
-                    text_color: my_green
+                    text_color: my_black
               else:
-                - if:
-                    condition:
-                      lambda: "return (x > 50 && x <= 60) || (x >= 20 && x < 30);"  # Slightly out of comfort range (%)
-                    then:
-                      - lvgl.label.update:
-                          id: rh_value
-                          text_color: my_yellow
-                    else:
-                      - if:
-                          condition:
-                            lambda: "return (x > 60 && x <= 70) || (x >= 10 && x < 20);"  # Moderately uncomfortable (%)
-                          then:
-                            - lvgl.label.update:
-                                id: rh_value
-                                text_color: my_orange
-                          else:
-                            - lvgl.label.update:
-                                id: rh_value
-                                text_color: my_red  # Very uncomfortable or potentially hazardous (%)                             
+                - lvgl.label.update:
+                    id: rh_value
+                    text_color: my_red  # Very uncomfortable or potentially hazardous (%)                             
     voc:
       name: "SEN55 VOC"
       id: sen55_voc
@@ -786,27 +652,11 @@ sensor:
               then:
                 - lvgl.label.update:
                     id: voc_value
-                    text_color: my_green
+                    text_color: my_black
               else:
-                - if:
-                    condition:
-                      lambda: "return x <= 250;"
-                    then:
-                      - lvgl.label.update:
-                          id: voc_value
-                          text_color: my_yellow
-                    else:
-                      - if:
-                          condition:
-                            lambda: "return x <= 400;"
-                          then:
-                            - lvgl.label.update:
-                                id: voc_value
-                                text_color: my_orange
-                          else:
-                            - lvgl.label.update:
-                                id: voc_value
-                                text_color: my_red                      
+                - lvgl.label.update:
+                    id: voc_value
+                    text_color: my_red                      
     i2c_id: lily_i2c
     address: 0x69
     update_interval: 10s
