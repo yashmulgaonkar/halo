@@ -51,6 +51,118 @@ api:
 
 captive_portal:
 
+globals:
+  - id: cycleCounter
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: temp_unit_changed
+    type: bool
+    initial_value: "true"
+
+switch:
+  - platform: template
+    name: "Startup Light Blink"
+    id: startup_light_blink
+    icon: mdi:lightbulb
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+    entity_category: "config"
+  - platform: template
+    name: "24h Clock Format"
+    id: time_format
+    icon: mdi:clock-digital
+    restore_mode: RESTORE_DEFAULT_OFF
+    optimistic: true
+    entity_category: "config"
+
+select:
+  - platform: template
+    name: Display Temperature Unit
+    id: display_temperature_unit
+    entity_category: "Config"
+    options:
+     - "Fahrenheit"
+     - "Celsius"
+     - "Kelvin"
+    initial_option: "Fahrenheit"
+    restore_value: true
+    optimistic: true
+    on_value:
+      - globals.set:
+          id: temp_unit_changed
+          value: "true"
+
+interval:
+  - interval: 10s
+    then:    
+      if:
+        condition:
+          wifi.connected:
+        then:
+          - lvgl.widget.update:
+              id: wifi_stat
+              text_color: my_green
+          - lvgl.widget.show:
+              id: ym_image              
+        else:
+          - lvgl.widget.update:
+              id: wifi_stat
+              text_color: my_red
+
+  - interval: 1s
+    then:
+      - script.execute: time_update  
+
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            - binary_sensor.is_off: ink_ha_connected
+            - lambda: 'return id(cycleCounter) < 30;'
+            - switch.is_on: startup_light_blink
+
+          then:
+            - light.turn_on:
+                id: rgb_light
+                effect: "Rainbow Effect With Custom Values"
+            - lambda: 'id(cycleCounter) += 1;'
+
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            - binary_sensor.is_off: ink_ha_connected
+            - lambda: 'return id(cycleCounter) > 30;'
+            - lambda: 'return id(cycleCounter) < 31;'
+            - switch.is_on: startup_light_blink
+
+          then:
+            - light.turn_off:
+                id: rgb_light
+            - lambda: 'id(cycleCounter) += 1;' 
+
+spi:  
+  id: display_spi
+  mosi_pin: GPIO6
+  clk_pin: GPIO5
+
+i2c:
+  - sda: GPIO7
+    scl: GPIO8
+    id: lily_i2c
+
+display:
+  - platform: waveshare_epaper
+    id: epaper_display
+    model: 2.90in3c
+    cs_pin: GPIO4
+    dc_pin: GPIO3
+    reset_pin: GPIO2
+    busy_pin: GPIO1
+    reset_duration: 2ms
+    update_interval: 30s
+
 font:
   - file: 'gfonts://Roboto'
     id: roboto12
@@ -77,30 +189,6 @@ color:
   - id: my_white
     hex: "000000"  
 
-spi:  
-  mosi_pin: GPIO6
-  clk_pin: GPIO5
-
-interval:
-  - interval: 10s
-    then:    
-      if:
-        condition:
-          wifi.connected:
-        then:
-          - lvgl.widget.update:
-              id: wifi_stat
-              text_color: my_black
-          - lvgl.widget.show:
-              id: ym_image              
-        else:
-          - lvgl.widget.update:
-              id: wifi_stat
-              text_color: my_red
-
-  - interval: 1s
-    then:
-      - script.execute: time_update
 
 time:
   - platform: homeassistant
@@ -121,50 +209,46 @@ script:
             if (hour_12 == 0) {
               hour_12 = 12; // 12 AM/PM should be displayed as 12, not 0
             }
-            snprintf(time_buf, sizeof(time_buf), "%2d:%02d%s", hour_12, now.minute, is_pm ? "PM" : "AM");
+            if(id(time_format).state) {
+              snprintf(time_buf, sizeof(time_buf), "%02d:%02d", now.hour, now.minute);
+            }
+            else {
+              snprintf(time_buf, sizeof(time_buf), "%2d:%02d%s", hour_12, now.minute, is_pm ? "PM" : "AM");
+            }
             return time_buf;
 
-light:
-  - platform: esp32_rmt_led_strip
-    id: rgb_light
-    name: "Neopixel"
-    pin: GPIO21
-    default_transition_length: 0s
-    chipset: WS2812
-    num_leds: 1
-    rgb_order: rgb
-    effects:
-      - pulse:
-          name: "Slow Pulse"
-          transition_length: 500ms
-          update_interval: 500ms
-          min_brightness: 10%
-          max_brightness: 50%
-      - addressable_rainbow:
-          name: Rainbow Effect
-          speed: 50
-          width: 1
+number:
+  - platform: template
+    name: SEN55 Temperature Offset
+    id: sen55_temperature_offset
+    restore_value: true
+    initial_value: 6.0
+    min_value: -70.0
+    max_value: 70.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "°C"
+    optimistic: true
+    update_interval: never
+    step: 0.1
+    mode: box
+  - platform: template
+    name: SEN55 Humidity Offset
+    id: sen55_humidity_offset
+    restore_value: true
+    initial_value: 0
+    min_value: -70.0
+    max_value: 70.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "%"
+    optimistic: true
+    update_interval: never
+    step: 0.1
+    mode: box
 
-display:
-  - platform: waveshare_epaper
-    id: epaper_display
-    model: 2.90in3c
-    cs_pin: GPIO4
-    dc_pin: GPIO3
-    reset_pin: GPIO2
-    busy_pin: GPIO1
-    reset_duration: 2ms
-    update_interval: 30s
-
-image:
-  - file: https://yashmulgaonkar.github.io/assets/YM2_epd.png
-    id: ym_logo
-    type: RGB565
-
-i2c:
-  - sda: GPIO7
-    scl: GPIO8
-    id: lily_i2c
+binary_sensor:
+  - platform: status
+    name: Online
+    id: ink_ha_connected    
 
 sensor:
   - platform: uptime
@@ -193,24 +277,634 @@ sensor:
                 return buffer;
           - if:
               condition:
-                lambda: "return x < 1500;"
+                lambda: "return x <= 600;"
               then:
                 - lvgl.label.update:
                     id: co2_value
-                    text_color: my_black                     
+                    text_color: my_green                     
               else:
                 - if:
                     condition:
-                      lambda: "return x <= 1500;"
+                      lambda: "return x <= 1000;"
                     then:
                       - lvgl.label.update:
                           id: co2_value
-                          text_color: my_red                                                                            
+                          text_color: my_yellow                         
+                    else:
+                      - if:
+                          condition:
+                            lambda: "return x <= 1500;"
+                          then:
+                            - lvgl.label.update:
+                                id: co2_value
+                                text_color: my_orange                                 
+                          else:
+                            - lvgl.label.update:
+                                id: co2_value
+                                text_color: my_red                                                                              
     automatic_self_calibration: false
     update_interval: 10s
     measurement_mode: "periodic"
     i2c_id: lily_i2c
-    # ambient_pressure_compensation_source: bme280pressure
+    ambient_pressure_compensation_source: bme280pressure
+
+  - platform: mics_4514
+    id: mics4514
+    nitrogen_dioxide:
+      name: Nitrogen Dioxide
+      id: "no2"
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: no2_value
+              text: !lambda |-
+                static char buffer[10];
+                snprintf(buffer, sizeof(buffer), "%.02f", x);
+                return buffer;
+          - if:
+              condition:
+                lambda: "return x <= 0.03;"  # Safe level typical indoors (ppm)
+              then:
+                - lvgl.label.update:
+                    id: no2_value
+                    text_color: my_green
+              else:
+                - if:
+                    condition:
+                      lambda: "return x <= 0.06;"  # Slightly elevated level (ppm)
+                    then:
+                      - lvgl.label.update:
+                          id: no2_value
+                          text_color: my_yellow
+                    else:
+                      - if:
+                          condition:
+                            lambda: "return x <= 0.1;"  # Moderately high level (ppm)
+                          then:
+                            - lvgl.label.update:
+                                id: no2_value
+                                text_color: my_orange
+                          else:
+                            - lvgl.label.update:
+                                id: no2_value
+                                text_color: my_red  # High level, unsafe indoors (ppm)                          
+    carbon_monoxide:
+      name: Carbon Monoxide
+      id: "co"
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: co_value
+              text: !lambda |-
+                static char buffer[10];
+                snprintf(buffer, sizeof(buffer), "%.02f", x);
+                return buffer;
+          - if:
+              condition:
+                lambda: "return x <= 15;"
+              then:
+                - lvgl.label.update:
+                    id: co_value
+                    text_color: my_green
+              else:
+                - if:
+                    condition:
+                      lambda: "return x <= 30;"
+                    then:
+                      - lvgl.label.update:
+                          id: co_value
+                          text_color: my_yellow
+                    else:
+                      - if:
+                          condition:
+                            lambda: "return x <= 36;"
+                          then:
+                            - lvgl.label.update:
+                                id: co_value
+                                text_color: my_orange
+                          else:
+                            - lvgl.label.update:
+                                id: co_value
+                                text_color: my_red                      
+    hydrogen:
+      name: Hydrogen
+      id: "h2"
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: h2_value
+              text: !lambda |-
+                static char buffer[10];
+                snprintf(buffer, sizeof(buffer), "%.02f", x);
+                return buffer;
+          - if:
+              condition:
+                lambda: "return x <= 0.4;"  # Safe level typical indoors
+              then:
+                - lvgl.label.update:
+                    id: h2_value
+                    text_color: my_green
+              else:
+                - if:
+                    condition:
+                      lambda: "return x <= 1.0;"  # Slightly elevated level
+                    then:
+                      - lvgl.label.update:
+                          id: h2_value
+                          text_color: my_yellow
+                    else:
+                      - if:
+                          condition:
+                            lambda: "return x <= 2.0;"  # Moderately high level
+                          then:
+                            - lvgl.label.update:
+                                id: h2_value
+                                text_color: my_orange
+                          else:
+                            - lvgl.label.update:
+                                id: h2_value
+                                text_color: my_red  # High level, unsafe indoors                       
+    methane:
+      name: Methane
+      id: "ch4"
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: ch4_value
+              text: !lambda |-
+                static char buffer[10];
+                snprintf(buffer, sizeof(buffer), "%.02f", x);
+                return buffer;
+          - if:
+              condition:
+                lambda: "return x <= 2.0;"  # Typical safe level
+              then:
+                - lvgl.label.update:
+                    id: ch4_value
+                    text_color: my_green
+              else:
+                - if:
+                    condition:
+                      lambda: "return x <= 10.0;"  # Elevated but not critical
+                    then:
+                      - lvgl.label.update:
+                          id: ch4_value
+                          text_color: my_yellow
+                    else:
+                      - lvgl.label.update:
+                          id: ch4_value
+                          text_color: my_red  # Critical level                                        
+    ethanol:
+      name: Ethanol
+      id: "ethanol"
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: ethanol_value
+              text: !lambda |-
+                static char buffer[10];
+                snprintf(buffer, sizeof(buffer), "%.02f", x);
+                return buffer;
+          - if:
+              condition:
+                lambda: "return x <= 0.5;"  # Safe level
+              then:
+                - lvgl.label.update:
+                    id: ethanol_value
+                    text_color: my_green
+              else:
+                - if:
+                    condition:
+                      lambda: "return x <= 1.5;"  # Slightly elevated
+                    then:
+                      - lvgl.label.update:
+                          id: ethanol_value
+                          text_color: my_yellow
+                    else:
+                      - if:
+                          condition:
+                            lambda: "return x <= 3.0;"  # Moderate level
+                          then:
+                            - lvgl.label.update:
+                                id: ethanol_value
+                                text_color: my_orange
+                          else:
+                            - lvgl.label.update:
+                                id: ethanol_value
+                                text_color: my_red  # High level                       
+    ammonia:
+      name: Ammonia
+      id: "nh3"
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: nh3_value
+              text: !lambda |-
+                static char buffer[10];
+                snprintf(buffer, sizeof(buffer), "%.02f", x);
+                return buffer;
+          - if:
+              condition:
+                lambda: "return x <= 0.5;"  # Safe level typical indoors
+              then:
+                - lvgl.label.update:
+                    id: nh3_value
+                    text_color: my_green
+              else:
+                - if:
+                    condition:
+                      lambda: "return x <= 1.0;"  # Slightly elevated level
+                    then:
+                      - lvgl.label.update:
+                          id: nh3_value
+                          text_color: my_yellow
+                    else:
+                      - if:
+                          condition:
+                            lambda: "return x <= 2.0;"  # Moderately high level
+                          then:
+                            - lvgl.label.update:
+                                id: nh3_value
+                                text_color: my_orange
+                          else:
+                            - lvgl.label.update:
+                                id: nh3_value
+                                text_color: my_red  # High level, unsafe indoors                            
+    update_interval: 10s
+    i2c_id: lily_i2c
+    address: 0x75
+
+  - platform: bme280_i2c
+    i2c_id: lily_i2c
+    temperature:
+      name: "BME280 Temperature"
+      oversampling: 2x
+      # filters:
+      #   - lambda: |-
+      #       return x;  
+    pressure:
+      name: "BME280 Pressure"
+      id: bme280pressure
+    humidity:
+      name: "BME280 Humidity"    
+
+  - platform: sen5x
+    id: sen55
+    pm_1_0:
+      name: "PM <1µm Weight concentration"
+      id: pm_1_0
+      accuracy_decimals: 1
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: pm1_value
+              text: !lambda |-
+                static char buffer[10];
+                snprintf(buffer, sizeof(buffer), "%.01f", x);
+                return buffer;          
+    pm_2_5:
+      name: "PM <2.5µm Weight concentration"
+      id: pm_2_5
+      accuracy_decimals: 1
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: pm25_value
+              text: !lambda |-
+                static char buffer[10];
+                snprintf(buffer, sizeof(buffer), "%.01f", x);
+                return buffer;
+          - lvgl.label.update:
+              id: aqi_value
+              text: !lambda |-
+                float val = x; // PM2.5 value
+                float aqi = 0.0;
+
+                if (val <= 9.0) {
+                  aqi = ((50.0 - 0.0) / (9.0 - 0.0)) * (val - 0.0) + 0.0;
+                } else if (val <= 35.4) {
+                  aqi = ((100.0 - 51.0) / (35.4 - 9.1)) * (val - 9.1) + 51.0;
+                } else if (val <= 55.4) {
+                  aqi = ((150.0 - 101.0) / (55.4 - 35.5)) * (val - 35.5) + 101.0;
+                } else if (val <= 125.4) {
+                  aqi = ((200.0 - 151.0) / (125.4 - 55.5)) * (val - 55.5) + 151.0;
+                } else if (val <= 225.4) {
+                  aqi = ((300.0 - 201.0) / (225.4 - 125.5)) * (val - 125.5) + 201.0;
+                } else if (val <= 500.4) {
+                  aqi = ((500.0 - 301.0) / (500.4 - 250.5)) * (val - 250.5) + 301.0;
+                } else {
+                  return "EVAC";
+                }
+
+                static char buffer[10];
+                snprintf(buffer, sizeof(buffer), " %d", (int)aqi);
+                return buffer;
+
+          - lvgl.widget.update:
+              id: aqi_widget
+              bg_color: !lambda |-
+                float val = x; // PM2.5 value
+                float aqi = 0.0;
+
+                if (val <= 9.0) {
+                  aqi = ((50.0 - 0.0) / (9.0 - 0.0)) * (val - 0.0) + 0.0;
+                } else if (val <= 35.4) {
+                  aqi = ((100.0 - 51.0) / (35.4 - 9.1)) * (val - 9.1) + 51.0;
+                } else if (val <= 55.4) {
+                  aqi = ((150.0 - 101.0) / (55.4 - 35.5)) * (val - 35.5) + 101.0;
+                } else if (val <= 125.4) {
+                  aqi = ((200.0 - 151.0) / (125.4 - 55.5)) * (val - 55.5) + 151.0;
+                } else if (val <= 225.4) {
+                  aqi = ((300.0 - 201.0) / (225.4 - 125.5)) * (val - 125.5) + 201.0;
+                } else if (val <= 500.4) {
+                  aqi = ((500.0 - 301.0) / (500.4 - 250.5)) * (val - 250.5) + 301.0;
+                } else {
+                  aqi = 500.0;
+                }
+
+                // Return color based on AQI
+                if (aqi <= 50) {
+                  return lv_color_hex(0x76fa76); // Green
+                } else if (aqi <= 100) {
+                  return lv_color_hex(0xFFFF00); // Yellow
+                } else if (aqi <= 150) {
+                  return lv_color_hex(0xFFA500); // Orange
+                } else if (aqi <= 200) {
+                  return lv_color_hex(0xFF0000); // Red
+                } else if (aqi <= 300) {
+                  return lv_color_hex(0x800080); // Purple
+                } else {
+                  return lv_color_hex(0x800000); // Maroon
+                }        
+
+    pm_4_0:
+      name: "PM <4µm Weight concentration"
+      id: pm_4_0
+      accuracy_decimals: 1
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: pm4_value
+              text: !lambda |-
+                static char buffer[10];
+                snprintf(buffer, sizeof(buffer), "%.01f", x);
+                return buffer;       
+    pm_10_0:
+      name: "PM <10µm Weight concentration"
+      id: pm_10_0
+      accuracy_decimals: 1
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: pm10_value
+              text: !lambda |-
+                static char buffer[10];
+                snprintf(buffer, sizeof(buffer), "%.01f", x);
+                return buffer;       
+    temperature:
+      name: "SEN55 Temperature"
+      accuracy_decimals: 1
+      filters:
+        - offset: !lambda return -1.0 * id(sen55_temperature_offset).state;
+      on_value:
+        then:
+          - if:
+              condition:
+                lambda: "return temp_unit_changed;"
+              then:
+                - lvgl.label.update:
+                    id: temperature_units
+                    text: !lambda |-
+                      if(id(display_temperature_unit).state == "Fahrenheit")
+                        return "\u00B0F";
+                      else if(id(display_temperature_unit).state == "Kelvin")
+                        return "K";
+                      return "\u00B0C";
+                - globals.set:
+                    id: temp_unit_changed
+                    value: "false"
+          - lvgl.label.update:
+              id: temperature_value
+              text: !lambda |-
+                static char buffer[10];
+                if(id(display_temperature_unit).state == "Fahrenheit")
+                  snprintf(buffer, sizeof(buffer), "%.01f", (x * 9.0 / 5.0) + 32.0);
+                else if(id(display_temperature_unit).state == "Kelvin")
+                  snprintf(buffer, sizeof(buffer), "%.01f", x + 273.15);
+                else
+                  snprintf(buffer, sizeof(buffer), "%.01f", x);
+                return buffer;
+          - if:
+              condition:
+                lambda: "return x >= 18 && x <= 24;"  # Comfortable temperature range (°C)
+              then:
+                - lvgl.label.update:
+                    id: temperature_value
+                    text_color: my_green
+              else:
+                - if:
+                    condition:
+                      lambda: "return (x > 24 && x <= 27) || (x >= 16 && x < 18);"  # Slightly uncomfortable (°C)
+                    then:
+                      - lvgl.label.update:
+                          id: temperature_value
+                          text_color: my_yellow
+                    else:
+                      - if:
+                          condition:
+                            lambda: "return (x > 27 && x <= 30) || (x >= 10 && x < 16);"  # Moderately uncomfortable (°C)
+                          then:
+                            - lvgl.label.update:
+                                id: temperature_value
+                                text_color: my_orange
+                          else:
+                            - lvgl.label.update:
+                                id: temperature_value
+                                text_color: my_red  # Extreme discomfort or unsafe (°C)
+    humidity:
+      name: "SEN55 Humidity"
+      filters:
+        - lambda: return x - id(sen55_humidity_offset).state;
+      accuracy_decimals: 0
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: rh_value
+              text: !lambda |-
+                static char buffer[10];
+                snprintf(buffer, sizeof(buffer), "%d", (int)x);
+                return buffer;
+          - if:
+              condition:
+                lambda: "return x >= 30 && x <= 50;"  # Optimal indoor comfort range (%)
+              then:
+                - lvgl.label.update:
+                    id: rh_value
+                    text_color: my_green
+              else:
+                - if:
+                    condition:
+                      lambda: "return (x > 50 && x <= 60) || (x >= 20 && x < 30);"  # Slightly out of comfort range (%)
+                    then:
+                      - lvgl.label.update:
+                          id: rh_value
+                          text_color: my_yellow
+                    else:
+                      - if:
+                          condition:
+                            lambda: "return (x > 60 && x <= 70) || (x >= 10 && x < 20);"  # Moderately uncomfortable (%)
+                          then:
+                            - lvgl.label.update:
+                                id: rh_value
+                                text_color: my_orange
+                          else:
+                            - lvgl.label.update:
+                                id: rh_value
+                                text_color: my_red  # Very uncomfortable or potentially hazardous (%)                             
+    voc:
+      name: "SEN55 VOC"
+      id: sen55_voc
+      algorithm_tuning:
+        #https://sensirion.com/media/documents/25AB572C/62B463AA/Sensirion_Engineering_Guidelines_SEN5x.pdf
+        index_offset: 100
+        learning_time_offset_hours: 72
+        learning_time_gain_hours: 72
+        gating_max_duration_minutes: 180
+        std_initial: 50
+        gain_factor: 230
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: voc_value
+              text: !lambda |-
+                static char buffer[10];
+                snprintf(buffer, sizeof(buffer), "%3d", (int)x);
+                return buffer;
+          - if:
+              condition:
+                lambda: "return x < 150;"
+              then:
+                - lvgl.label.update:
+                    id: voc_value
+                    text_color: my_green
+              else:
+                - if:
+                    condition:
+                      lambda: "return x <= 250;"
+                    then:
+                      - lvgl.label.update:
+                          id: voc_value
+                          text_color: my_yellow
+                    else:
+                      - if:
+                          condition:
+                            lambda: "return x <= 400;"
+                          then:
+                            - lvgl.label.update:
+                                id: voc_value
+                                text_color: my_orange
+                          else:
+                            - lvgl.label.update:
+                                id: voc_value
+                                text_color: my_red                      
+    i2c_id: lily_i2c
+    address: 0x69
+    update_interval: 10s
+
+button:
+  - platform: restart
+    icon: mdi:power-cycle
+    name: "ESP Reboot"
+
+  - platform: factory_reset
+    disabled_by_default: True
+    name: "Factory Reset ESP"
+    id: factory_reset_all
+
+  - platform: template
+    name: "Calibrate SCD40 To 420ppm"
+    id: set_SCD40_calibrate
+    on_press:
+      - scd4x.perform_forced_calibration:
+          value: 420
+          id: scd40
+
+  - platform: template
+    name: "Clean SEN55"
+    id: clean_sen55
+    on_press:
+      - sen5x.start_fan_autoclean: sen55
+
+text_sensor:
+    # Convert VOC Index To Text: 
+    # https://sensirion.com/media/documents/02232963/6294E043/Info_Note_VOC_Index.pdf
+    # https://sensirion.com/media/documents/ACD82D45/6294DFC0/Info_Note_Integration_VOC_NOx_Sensor.pdf
+  - platform: template
+    name: "VOC Quality"
+    id: voc_quality
+    icon: mdi:air-filter
+    lambda: |-
+      if (id(sen55_voc).state < 80) {
+        return std::string("Improved");} 
+      else if (id(sen55_voc).state < 150) {
+        return std::string("Normal");} 
+      else if (id(sen55_voc).state < 250) {
+        return std::string("Abnormal");} 
+      else if (id(sen55_voc).state < 400) {
+        return std::string("Very abnormal");} 
+      else {
+        return std::string("Extremely abnormal");}   
+
+# light:
+#   - platform: esp32_rmt_led_strip
+#     id: rgb_light
+#     name: "Halo"
+#     pin: GPIO47
+#     default_transition_length: 0s
+#     chipset: WS2812
+#     num_leds: 11
+#     rgb_order: grb
+#     effects:
+#       - pulse:
+#           name: "Slow Pulse"
+#           transition_length: 500ms
+#           update_interval: 500ms
+#           min_brightness: 10%
+#           max_brightness: 50%
+#       - addressable_rainbow:
+#           name: Rainbow Effect With Custom Values
+#           speed: 10
+#           width: 50
+#   - platform: monochromatic
+#     output: backlight
+#     name: "Display Backlight"
+#     restore_mode: ALWAYS_ON
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: rgb_light
+    name: "Neopixel"
+    pin: GPIO21
+    default_transition_length: 0s
+    chipset: WS2812
+    num_leds: 1
+    rgb_order: rgb
+    effects:
+      - pulse:
+          name: "Slow Pulse"
+          transition_length: 500ms
+          update_interval: 500ms
+          min_brightness: 10%
+          max_brightness: 50%
+      - addressable_rainbow:
+          name: Rainbow Effect
+          speed: 50
+          width: 1
+
+image:
+  - file: https://yashmulgaonkar.github.io/assets/YM2_epd.png
+    id: ym_logo
+    type: RGB565
 
 lvgl:
   displays: #296x128
