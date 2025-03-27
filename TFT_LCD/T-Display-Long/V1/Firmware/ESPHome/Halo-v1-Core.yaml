@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.3.15.1"
+  version: "25.3.26.1"
   device_description: ${name} - v${version}.
 
 psram:
@@ -313,7 +313,16 @@ sensor:
     id: wifi_signal_db
     update_interval: 60s
     entity_category: "diagnostic"
-      
+
+  - platform: template
+    name: "Computed AQI"
+    id: computed_halo_aqi
+    unit_of_measurement: "AQI"
+    accuracy_decimals: 0
+    device_class: "aqi"
+    state_class: "measurement"
+    update_interval: never  # We'll update it manually
+
   - platform: scd4x
     id: scd40
     co2:
@@ -673,6 +682,7 @@ sensor:
                 } else {
                   aqi = 500.0;
                 }
+                id(computed_halo_aqi).publish_state((int)aqi);
 
                 // Return color based on AQI
                 if (aqi <= 50) {
