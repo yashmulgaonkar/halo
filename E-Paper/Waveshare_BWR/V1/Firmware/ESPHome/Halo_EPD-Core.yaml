@@ -702,40 +702,15 @@ text_sensor:
       else {
         return std::string("Extremely abnormal");}   
 
-# light:
-#   - platform: esp32_rmt_led_strip
-#     id: rgb_light
-#     name: "Halo"
-#     pin: GPIO47
-#     default_transition_length: 0s
-#     chipset: WS2812
-#     num_leds: 11
-#     rgb_order: grb
-#     effects:
-#       - pulse:
-#           name: "Slow Pulse"
-#           transition_length: 500ms
-#           update_interval: 500ms
-#           min_brightness: 10%
-#           max_brightness: 50%
-#       - addressable_rainbow:
-#           name: Rainbow Effect With Custom Values
-#           speed: 10
-#           width: 50
-#   - platform: monochromatic
-#     output: backlight
-#     name: "Display Backlight"
-#     restore_mode: ALWAYS_ON
-
 light:
   - platform: esp32_rmt_led_strip
     id: rgb_light
-    name: "Neopixel"
-    pin: GPIO21
+    name: "Halo"
+    pin: GPIO9
     default_transition_length: 0s
     chipset: WS2812
-    num_leds: 1
-    rgb_order: rgb
+    num_leds: 11
+    rgb_order: grb
     effects:
       - pulse:
           name: "Slow Pulse"
@@ -745,8 +720,29 @@ light:
           max_brightness: 50%
       - addressable_rainbow:
           name: Rainbow Effect
-          speed: 50
-          width: 1
+          speed: 10
+          width: 50
+
+# light:
+#   - platform: esp32_rmt_led_strip
+#     id: rgb_light
+#     name: "Neopixel"
+#     pin: GPIO21
+#     default_transition_length: 0s
+#     chipset: WS2812
+#     num_leds: 1
+#     rgb_order: rgb
+#     effects:
+#       - pulse:
+#           name: "Slow Pulse"
+#           transition_length: 500ms
+#           update_interval: 500ms
+#           min_brightness: 10%
+#           max_brightness: 50%
+#       - addressable_rainbow:
+#           name: Rainbow Effect
+#           speed: 50
+#           width: 1
 
 image:
   - file: https://yashmulgaonkar.github.io/assets/YM2_epd.png
