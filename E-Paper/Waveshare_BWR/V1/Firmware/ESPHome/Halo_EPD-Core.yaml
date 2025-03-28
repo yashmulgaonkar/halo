@@ -145,8 +145,8 @@ spi:
   clk_pin: GPIO5
 
 i2c:
-  - sda: GPIO7
-    scl: GPIO8
+  - sda: GPIO8
+    scl: GPIO7
     id: lily_i2c
 
 display:
