@@ -1,0 +1,10 @@
+Designator,Quantity,Footprint,Manufacturer Part Number,Digi-Key Part Number,Comment
+
+"C1, C3","2","CAPC1608X90X40LL10T20","","","CC0603ZRY5V9BB104"
+"C2, C4","2","CAPC1608X90X35LL10T15","","","GRM188R61E105KA12D"
+"C5, C6","2","FP-OS-CON-TH-C9-d_0_6-MFG","","","6SEPC470MW+TSS"
+"J2","1","FP-BM04B-SRSS-TBT_LF_SN-MFG","","","BM04B-SRSS-TBT"
+"J3","1","FP-BM07B-GHS-TBT_LF_SN-MFG","","","BM07B-GHS-TBT (LF)(SN)"
+"TP1, TP2, TP3, TP4, TP5, TP6, TP7, TP8","8","test_pad","","","test_pad"
+"U1","1","ESP32-S3-Zero_headers","","","ESP32-S3-Zero"
+"U2","1","EPD","","","EPD"

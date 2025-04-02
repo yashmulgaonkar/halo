@@ -1,0 +1,31 @@
+Altium Designer Pick and Place Locations
+C:\Users\yashm\My Drive\Personal\AQI_Sensor\Halo\E_Paper\PCB\MCU_Board\V1.0\Project Outputs for Halo_BrainBoard_V1.0\Pick Place for Halo_BrainBoard_V1.0.csv
+
+========================================================================================================================
+File Design Information:
+
+Date:       16/03/25
+Time:       03:03
+Revision:   Not in VersionControl
+Variant:    No variations
+Units used: mil
+
+"Designator","Comment","Layer","Footprint","Center-X(mil)","Center-Y(mil)","Rotation","Description"
+"C5","6SEPC470MW+TSS","TopLayer","FP-OS-CON-TH-C9-d_0_6-MFG","-536.141","586.614","180","Conductive Polymer Aluminum Solid Capacitors (OS-CON) 470uF ±20% 6.3V RADIAL TH 6.3x9mm"
+"C6","6SEPC470MW+TSS","TopLayer","FP-OS-CON-TH-C9-d_0_6-MFG","-511.811","-263.779","0","Conductive Polymer Aluminum Solid Capacitors (OS-CON) 470uF ±20% 6.3V RADIAL TH 6.3x9mm"
+"TP8","test_pad","TopLayer","test_pad","688.976","492.126","90",""
+"TP7","test_pad","TopLayer","test_pad","688.976","354.331","90",""
+"TP6","test_pad","TopLayer","test_pad","846.457","196.850","0",""
+"TP5","test_pad","TopLayer","test_pad","708.661","196.850","0",""
+"TP4","test_pad","TopLayer","test_pad","570.866","196.850","0",""
+"TP3","test_pad","TopLayer","test_pad","570.866","334.646","0",""
+"TP2","test_pad","TopLayer","test_pad","570.866","433.071","0",""
+"TP1","test_pad","TopLayer","test_pad","570.866","531.496","0",""
+"J3","BM07B-GHS-TBT (LF)(SN)","TopLayer","FP-BM07B-GHS-TBT_LF_SN-MFG","801.181","-202.756","90","CONN HEADER SMD 7POS 1.25MM"
+"U2","EPD","TopLayer","EPD","0.000","-669.291","90",""
+"U1","ESP32-S3-Zero","TopLayer","ESP32-S3-Zero_headers","0.000","299.213","0","Waveshare ESP32-S3-Zero"
+"C4","GRM188R61E105KA12D","TopLayer","CAPC1608X90X35LL10T15","509.842","-214.567","0",""
+"C3","CC0603ZRY5V9BB104","TopLayer","CAPC1608X90X40LL10T20","509.842","-155.512","0","Chip Capacitor, 100 nF, - 20% to + 80%, 50 V, -30 to 85 degC, 0603 (1608 Metric), RoHS, Tape and Reel"
+"C2","GRM188R61E105KA12D","TopLayer","CAPC1608X90X35LL10T15","509.842","-96.457","0",""
+"C1","CC0603ZRY5V9BB104","TopLayer","CAPC1608X90X40LL10T20","509.842","-37.402","0","Chip Capacitor, 100 nF, - 20% to + 80%, 50 V, -30 to 85 degC, 0603 (1608 Metric), RoHS, Tape and Reel"
+"J2","BM04B-SRSS-TBT","TopLayer","FP-BM04B-SRSS-TBT_LF_SN-MFG","806.595","-618.110","270","CONN HEADER SMD 4POS 1MM"
