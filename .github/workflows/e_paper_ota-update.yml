@@ -1,7 +1,7 @@
 name: Build and Release Halo EPD Firmware
 
 env:
-  DEVICE_NAME: halo
+  DEVICE_NAME: halo-epd
 
 on:
   push:
