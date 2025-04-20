@@ -5,7 +5,8 @@ esphome:
   platformio_options:
     upload_speed: 921600
     build_unflags: -Werror=all
-    board_build.flash_mode: dio
+    board_build.flash_mode: qio
+    board_build.prsam_type: opi
     board_build.f_flash: 80000000L
     board_build.f_cpu: 240000000L
 

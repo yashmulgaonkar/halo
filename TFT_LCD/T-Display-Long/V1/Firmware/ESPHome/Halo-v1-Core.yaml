@@ -13,6 +13,8 @@ esp32:
   flash_size: 16MB
   framework:
     type: esp-idf
+    advanced:
+      enable_idf_experimental_features: true
 
 esp32_improv:
   authorizer: none
