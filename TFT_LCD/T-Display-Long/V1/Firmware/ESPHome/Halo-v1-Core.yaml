@@ -165,17 +165,18 @@ output:
 #   i2c_id: touch_i2c
 #   state_led_enable: false  # To turn off the blinking green status LED
 
-# display:
-#   - platform: axs15231
-#     id: lily_display
-#     spi_id: lily_spi
-#     dimensions:
-#       height: 640
-#       width: 180
-#     cs_pin: 12
-#     reset_pin: 16
-#     rotation: 0
-#     auto_clear_enabled: false
+display:
+  - platform: qspi_dbi
+    id: lily_display
+    model: AXS15231
+    spi_id: lily_spi
+    dimensions:
+      height: 640
+      width: 180
+    cs_pin: 12
+    reset_pin: 16
+    rotation: 0
+    auto_clear_enabled: false
 
 touchscreen:
   - platform: axs15231
