@@ -57,7 +57,7 @@ jobs:
   build-firmware:
     name: Build And Release
     needs: [create-release, build-site]
-    uses: esphome/workflows/.github/workflows/build.yml@v2.0.0
+    uses: esphome/workflows/.github/workflows/build.yml@main
     with:
       files: |
         E-Paper/Waveshare_BWR/V1/Firmware/ESPHome/Halo_EPD.yaml

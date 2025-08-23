@@ -57,7 +57,7 @@ jobs:
   build-firmware:
     name: Build And Release
     needs: [create-release, build-site]
-    uses: esphome/workflows/.github/workflows/build.yml@v2.0.0
+    uses: esphome/workflows/.github/workflows/build.yml@main
     with:
       files: |
         TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml
