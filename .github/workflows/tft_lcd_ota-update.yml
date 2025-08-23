@@ -57,29 +57,15 @@ jobs:
   build-firmware:
     name: Build And Release
     needs: [create-release, build-site]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4.1.7
-        
-      - name: Debug - Show Directory Structure
-        run: |
-          echo "Current directory: $(pwd)"
-          echo "Directory contents:"
-          ls -la
-          echo "Files directory contents:"
-          ls -la files/ || echo "Files directory does not exist"
-          
-      - name: Build Firmware
-        uses: esphome/workflows/.github/workflows/build.yml@v2.0.0
-        with:
-          files: |
-            TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml
-          esphome-version: stable
-          combined-name: firmware-tft
-          release-summary: ${{ github.event.release.body || '' }}
-          release-url: ${{ github.event.release.html_url || '' }}
-          release-version: ${{ github.event.release.tag_name || github.ref_name || 'dev' }}
+    uses: esphome/workflows/.github/workflows/build.yml@v2.0.0
+    with:
+      files: |
+        TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml
+      esphome-version: stable
+      combined-name: firmware-tft
+      release-summary: ${{ github.event.release.body || '' }}
+      release-url: ${{ github.event.release.html_url || '' }}
+      release-version: ${{ github.event.release.tag_name || github.ref_name || 'dev' }}
 
   build-site:
     name: Build Site
