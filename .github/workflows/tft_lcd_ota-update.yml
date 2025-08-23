@@ -75,12 +75,28 @@ jobs:
         run: |
           cd TFT_LCD/T-Display-Long/V1/Firmware/ESPHome
           esphome compile Halo-v1.yaml
+          echo "Build completed. Checking for firmware files..."
+          find .esphome/build -name "*.bin" -type f
+          
+      - name: Debug - Show Build Directory
+        run: |
+          cd TFT_LCD/T-Display-Long/V1/Firmware/ESPHome
+          echo "Build directory structure:"
+          ls -la .esphome/ || echo "No .esphome directory found"
+          ls -la .esphome/build/ || echo "No build directory found"
+          if [ -d ".esphome/build" ]; then
+            echo "Build subdirectories:"
+            ls -la .esphome/build/
+          fi
           
       - name: Upload Firmware Artifact
         uses: actions/upload-artifact@v4.3.6
         with:
           name: firmware-tft
-          path: TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/.esphome/build/*/firmware.bin
+          path: |
+            TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/.esphome/build/*/firmware.bin
+            TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/.esphome/build/*/*.bin
+          if-no-files-found: error
 
   build-site:
     name: Build Site
@@ -119,6 +135,18 @@ jobs:
         with:
           name: firmware-tft
           path: firmware
+
+      - name: Check Firmware Artifacts
+        run: |
+          echo "Checking firmware artifacts..."
+          ls -la firmware/ || echo "No firmware directory found"
+          if [ -d "firmware" ]; then
+            echo "Firmware files found:"
+            find firmware -type f
+          else
+            echo "No firmware artifacts downloaded"
+            exit 1
+          fi
 
       - name: Copy Firmware and Manifest
         run: |-
