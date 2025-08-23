@@ -87,6 +87,22 @@ jobs:
           if [ -d ".esphome/build" ]; then
             echo "Build subdirectories:"
             ls -la .esphome/build/
+            for dir in .esphome/build/*/; do
+              if [ -d "$dir" ]; then
+                echo "Contents of $dir:"
+                ls -la "$dir"
+                if [ -d "$dir.pioenvs" ]; then
+                  echo "Contents of $dir.pioenvs:"
+                  ls -la "$dir.pioenvs"
+                  for pio_dir in "$dir.pioenvs"/*/; do
+                    if [ -d "$pio_dir" ]; then
+                      echo "Contents of $pio_dir:"
+                      ls -la "$pio_dir"
+                    fi
+                  done
+                fi
+              fi
+            done
           fi
           
       - name: Upload Firmware Artifact
@@ -94,7 +110,8 @@ jobs:
         with:
           name: firmware-epd
           path: |
-            E-Paper/Waveshare_BWR/V1/Firmware/ESPHome/.esphome/build/*/firmware.bin
+            E-Paper/Waveshare_BWR/V1/Firmware/ESPHome/.esphome/build/*/.pioenvs/*/firmware.factory.bin
+            E-Paper/Waveshare_BWR/V1/Firmware/ESPHome/.esphome/build/*/.pioenvs/*/firmware.bin
             E-Paper/Waveshare_BWR/V1/Firmware/ESPHome/.esphome/build/*/*.bin
           if-no-files-found: error
 
