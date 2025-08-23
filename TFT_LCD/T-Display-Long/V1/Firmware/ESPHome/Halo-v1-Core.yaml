@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.5.14.1"
+  version: "25.8.22.1"
   device_description: ${name} - v${version}.
 
 psram:
@@ -11,6 +11,7 @@ psram:
 esp32:
   board: esp32-s3-devkitc-1
   flash_size: 16MB
+  cpu_frequency: 240MHz
   framework:
     type: esp-idf
     advanced:
