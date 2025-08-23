@@ -45,13 +45,13 @@ jobs:
 
   build-firmware:
     name: Build And Release
-    needs: create-release
+    needs: [create-release, build-site]
     uses: esphome/workflows/.github/workflows/build.yml@main
     with:
       files: |
         TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml
       esphome-version: stable
-      combined-name: firmware
+      combined-name: firmware-tft
       release-summary: ${{ github.event.release.body || '' }}
       release-url: ${{ github.event.release.html_url || '' }}
       release-version: ${{ github.event.release.tag_name || github.ref_name || 'dev' }}
@@ -91,7 +91,7 @@ jobs:
       - name: Download Firmware Artifact
         uses: actions/download-artifact@v4.1.8
         with:
-          name: firmware
+          name: firmware-tft
           path: firmware
 
       - name: Copy Firmware and Manifest
