@@ -22,9 +22,9 @@ esp32:
 esp32_improv:
   authorizer: none
 
-# external_components:
-#   - source: github://yashmulgaonkar/esphome-components
-#     components: [axs15231, sy6970]
+external_components:
+  - source: github://yashmulgaonkar/esphome-components
+    components: [axs15231, sy6970]
 
 spi:
   id: lily_spi
