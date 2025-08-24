@@ -955,7 +955,7 @@ light:
     rgb_order: GRB
     pin: GPIO47
     num_leds: 11
-    chipset: WS2812B
+    chipset: WS2812
     restore_mode: RESTORE_AND_OFF
     effects:
       - addressable_rainbow:
