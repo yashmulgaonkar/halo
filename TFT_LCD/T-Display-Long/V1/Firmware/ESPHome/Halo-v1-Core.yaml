@@ -932,6 +932,7 @@ light:
     chipset: SK6812
     num_leds: 11
     rgb_order: grb
+    use_psram: false
     effects:
       - pulse:
           name: "Slow Pulse"
