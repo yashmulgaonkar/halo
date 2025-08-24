@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.8.23.1"
+  version: "25.8.23.2"
   device_description: ${name} - v${version}.
 
 psram:
@@ -929,7 +929,7 @@ light:
     name: "Halo"
     pin: GPIO47
     default_transition_length: 0s
-    chipset: WS2812
+    chipset: SK6812
     num_leds: 11
     rgb_order: grb
     effects:
