@@ -954,15 +954,15 @@ light:
     id: ledstrip
     rgb_order: GRB
     pin: 
-      number: GPIO8
+      number: GPIO47
       ignore_strapping_warning: true 
-    rmt_channel: 0
-    num_leds: 24
+    num_leds: 11
     chipset: SK6812
     restore_mode: RESTORE_AND_OFF
     effects:
       - addressable_rainbow:
           name: Addressable Rainbow
+
   - platform: monochromatic
     output: backlight
     name: "Display Backlight"
