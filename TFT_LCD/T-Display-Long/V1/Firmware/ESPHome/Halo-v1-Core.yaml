@@ -951,7 +951,7 @@ light:
 
   - platform: esp32_rmt_led_strip
     name: Ledstrip
-    id: ledstrip
+    id: rgb_light
     rgb_order: GRB
     pin: GPIO47
     num_leds: 11
