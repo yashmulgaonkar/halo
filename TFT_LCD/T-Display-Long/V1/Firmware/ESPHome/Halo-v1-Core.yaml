@@ -933,6 +933,7 @@ light:
     num_leds: 11
     rgb_order: grb
     use_psram: false
+    use_dma: false
     effects:
       - pulse:
           name: "Slow Pulse"
