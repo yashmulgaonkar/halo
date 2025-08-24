@@ -929,12 +929,10 @@ light:
     name: "Halo"
     pin: GPIO47
     rgb_order: GRB
-    default_transition_length: 0s
+    default_transition_length: 2s
     chipset: SK6812
-    # is_rgbw: true
-    is_wrgb: true
+    rmt_channel: 0
     num_leds: 11
-    use_dma: false
     effects:
       - pulse:
           name: "Slow Pulse"
