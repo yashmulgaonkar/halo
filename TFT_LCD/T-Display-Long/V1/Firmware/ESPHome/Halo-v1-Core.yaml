@@ -939,7 +939,7 @@ light:
   #   num_leds: 11
   #   effects:
   #     - pulse:
-  #         name: "Slow Pulse"
+  #         name: "Slow Pulse" 
   #         transition_length: 500ms
   #         update_interval: 500ms
   #         min_brightness: 10%
@@ -950,12 +950,12 @@ light:
   #         width: 50
 
   - platform: esp32_rmt_led_strip
-    name: Ledstrip
+    name: Halo
     id: rgb_light
     rgb_order: GRB
     pin: GPIO47
     num_leds: 11
-    chipset: SK6812
+    chipset: WS2812B
     restore_mode: RESTORE_AND_OFF
     effects:
       - addressable_rainbow:
