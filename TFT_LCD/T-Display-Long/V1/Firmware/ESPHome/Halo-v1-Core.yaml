@@ -930,9 +930,9 @@ light:
     pin: GPIO47
     default_transition_length: 0s
     chipset: SK6812
+    is_rgbw: false
+    is_wrgb: false
     num_leds: 11
-    rgb_order: grb
-    use_psram: false
     use_dma: false
     effects:
       - pulse:
