@@ -931,7 +931,7 @@ light:
     rgb_order: GRB
     default_transition_length: 2s
     chipset: SK6812
-    rmt_channel: 0
+    invert: true
     num_leds: 11
     effects:
       - pulse:
