@@ -931,8 +931,8 @@ light:
     rgb_order: GRB
     default_transition_length: 0s
     chipset: SK6812
-    is_rgbw: true
-    is_wrgb: false
+    # is_rgbw: true
+    is_wrgb: true
     num_leds: 11
     use_dma: false
     effects:
