@@ -928,6 +928,7 @@ light:
     id: rgb_light
     name: "Halo"
     pin: GPIO47
+    rgb_order: GRB
     default_transition_length: 0s
     chipset: SK6812
     is_rgbw: false
