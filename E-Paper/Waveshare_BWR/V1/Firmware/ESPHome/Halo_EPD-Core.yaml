@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo-epd
-  version: "25.8.23.1"
+  version: "25.8.23.2"
   device_description: ${name} - v${version}.
 
 esp32:
@@ -11,6 +11,8 @@ esp32:
   framework:
     type: esp-idf
     version: latest
+  platform_version: 6.9.0
+  version: 5.3.1
 
 psram:
   mode: octal
