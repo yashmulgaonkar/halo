@@ -26,6 +26,11 @@ external_components:
   - source: github://yashmulgaonkar/esphome-components
     components: [axs15231, sy6970]
 
+  - source: github://pr#7770 # RMT driver, remove rmt_channel when using esp-idf
+    components: [esp32_rmt, esp32_rmt_led_strip ]
+    refresh: 0s
+
+
 spi:
   id: lily_spi
   type: quad
