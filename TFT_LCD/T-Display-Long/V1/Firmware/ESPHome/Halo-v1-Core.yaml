@@ -949,7 +949,6 @@ light:
   #         speed: 10
   #         width: 50
 
-  light:
   - platform: esp32_rmt_led_strip
     name: Ledstrip
     id: ledstrip
