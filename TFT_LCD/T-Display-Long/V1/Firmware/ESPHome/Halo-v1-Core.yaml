@@ -953,9 +953,7 @@ light:
     name: Ledstrip
     id: ledstrip
     rgb_order: GRB
-    pin: 
-      number: GPIO47
-      ignore_strapping_warning: true 
+    pin: GPIO47
     num_leds: 11
     chipset: SK6812
     restore_mode: RESTORE_AND_OFF
