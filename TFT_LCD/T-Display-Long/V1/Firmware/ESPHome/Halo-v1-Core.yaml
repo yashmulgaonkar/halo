@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.8.23.2"
+  version: "25.8.24.1"
   device_description: ${name} - v${version}.
 
 psram:
@@ -27,7 +27,7 @@ external_components:
     components: [axs15231, sy6970]
 
   - source: github://pr#7770 # RMT driver, remove rmt_channel when using esp-idf
-    components: [esp32_rmt, esp32_rmt_led_strip ]
+    components: [ remote_base, remote_receiver, remote_transmitter, esp32_rmt, esp32_rmt_led_strip ]
     refresh: 0s
 
 
