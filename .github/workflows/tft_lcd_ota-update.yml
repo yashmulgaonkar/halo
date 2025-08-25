@@ -92,11 +92,12 @@ jobs:
           FILE_SIZE=$(stat -c%s "$FIRMWARE_FILE")
           FILE_HASH=$(sha256sum "$FIRMWARE_FILE" | cut -d' ' -f1)
           
-          # Create manifest.json
+          # Create manifest.json with correct paths
           cat > manifest.json << EOF
           {
             "name": "Halo TFT LCD Firmware",
             "version": "${{ env.project_version }}",
+            "new_install_prompt_erase": true,
             "builds": [
               {
                 "chipFamily": "ESP32",
@@ -219,12 +220,38 @@ jobs:
             cp firmware/manifest.json output/
             echo "Manifest copied to output root for OTA access"
           fi
+          
+          # Also copy to firmware subdirectory for organization
+          if [ -f "firmware/manifest.json" ]; then
+            cp firmware/manifest.json output/firmware/
+            echo "Manifest also copied to firmware subdirectory"
+          fi
 
       - name: Download Site Artifact
         uses: actions/download-artifact@v4.1.8
         with:
           name: site
           path: output
+
+      - name: Final verification
+        run: |
+          echo "=== OUTPUT DIRECTORY STRUCTURE ==="
+          find output -type f | sort
+          
+          echo "=== MANIFEST LOCATIONS ==="
+          if [ -f "output/manifest.json" ]; then
+            echo "✅ Root manifest.json found"
+            cat output/manifest.json
+          else
+            echo "❌ Root manifest.json NOT found"
+          fi
+          
+          if [ -f "output/firmware/manifest.json" ]; then
+            echo "✅ Firmware subdirectory manifest.json found"
+            cat output/firmware/manifest.json
+          else
+            echo "❌ Firmware subdirectory manifest.json NOT found"
+          fi
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3.0.1

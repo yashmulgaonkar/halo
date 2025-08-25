@@ -1,0 +1,21 @@
+name: Build and Release Halo EPD Firmware
+
+on:
+  push:
+    paths:
+      - 'E-Paper/**'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    uses: ./.github/workflows/reusable_publish.yml
+    with:
+      core_yaml_path: 'E-Paper/Waveshare_BWR/V1/Firmware/ESPHome/Halo_EPD-Core.yaml'
+      firmwares_json: |
+        [
+          {
+            "name": "halo-epd",
+            "yaml": "E-Paper/Waveshare_BWR/V1/Firmware/ESPHome/Halo_EPD.yaml"
+          }
+        ]
+      static_files_path: 'static'

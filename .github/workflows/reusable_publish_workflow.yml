@@ -1,0 +1,245 @@
+name: Reusable Publish Workflow
+
+on:
+  workflow_call:
+    inputs:
+      core_yaml_path:
+        required: true
+        type: string
+      firmwares_json:
+        required: true
+        type: string
+      static_files_path:
+        required: false
+        type: string
+        default: 'static'
+        description: 'Path to the static files directory relative to repo root'
+
+jobs:
+  set-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read_version.outputs.version }}
+      upload_url: ${{ steps.run-release-drafter.outputs.upload_url }}
+      body: ${{ steps.run-release-drafter.outputs.body }}
+      html_url: ${{ steps.run-release-drafter.outputs.html_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+      - name: Read version from YAML file
+        id: read_version
+        run: |
+          version=$(awk '/substitutions:/ {found=1} found && /version:/ {print $2; exit}' ${{ inputs.core_yaml_path }} | tr -d '"')
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "Detected version: $version"
+      - name: Fetch Last Merged PR Body
+        id: last_pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?state=closed&sort=updated&direction=desc&per_page=1")
+          PR_BODY=$(echo "$PR_INFO" | jq -r '.[0].body')
+          echo "$PR_BODY" > pr_body.txt
+      - name: Run Release Drafter
+        id: run-release-drafter
+        uses: release-drafter/release-drafter@v6
+        with:
+          version: ${{ steps.read_version.outputs.version }}
+          publish: true
+          tag: ${{ steps.read_version.outputs.version }}
+          name: Release ${{ steps.read_version.outputs.version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-firmware:
+    needs: set-version
+    strategy:
+      matrix:
+        firmware: ${{ fromJson(inputs.firmwares_json) }}
+    uses: esphome/workflows/.github/workflows/build.yml@main
+    with:
+      files: ${{ matrix.firmware.yaml }}
+      esphome-version: stable
+      combined-name: ${{ matrix.firmware.name }}
+      release-summary: ${{ needs.set-version.outputs.body }}
+      release-version: ${{ needs.set-version.outputs.version }}
+
+  build-site:
+    needs: [set-version, build-firmware]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v5
+      
+      - name: Debug repository structure
+        run: |
+          echo "=== REPOSITORY STRUCTURE ==="
+          # List top-level directories and files
+          ls -la
+          
+          # Check if static files path exists
+          if [ -d "${{ inputs.static_files_path }}" ]; then
+            echo "✅ Static files directory found at: ${{ inputs.static_files_path }}"
+            echo "Contents:"
+            ls -la "${{ inputs.static_files_path }}"
+          else
+            echo "❌ Static files directory NOT found at: ${{ inputs.static_files_path }}"
+            echo "Searching for potential static directories:"
+            find . -type d -name "static" -not -path "*/\.*" | sort
+          fi
+
+      - name: Copy static files with link resolution (no symlinks)
+        run: |
+          # Create output directory
+          mkdir -p output
+          
+          # Check if static directory exists before copying
+          if [ -d "${{ inputs.static_files_path }}" ]; then
+            # Copy with dereference to resolve symlinks
+            cp -R --dereference "${{ inputs.static_files_path }}/"* output/
+            echo "✅ Copied static files from: ${{ inputs.static_files_path }}"
+          else
+            echo "❌ ERROR: Static files directory not found at: ${{ inputs.static_files_path }}"
+            echo "Creating a minimal index.html as fallback"
+            echo "<html><body><h1>Halo Firmware</h1><p>Static files not found. This is a fallback page.</p></body></html>" > output/index.html
+          fi
+          
+          # Show what was copied
+          echo "Output directory contents:"
+          ls -la output/
+
+      - name: Verify no symlinks or hardlinks exist
+        run: |
+          symlinks=$(find output -type l | wc -l)
+          hardlinks=$(find output -type f -links +1 | wc -l)
+          
+          echo "Symlinks found: $symlinks"
+          echo "Hard links found: $hardlinks"
+          
+          if [ "$symlinks" -gt 0 ] || [ "$hardlinks" -gt 0 ]; then
+            echo "ERROR: Found links in output directory!"
+            [ "$symlinks" -gt 0 ] && echo "Symlinks:" && find output -type l -ls
+            [ "$hardlinks" -gt 0 ] && echo "Hard links:" && find output -type f -links +1 -ls
+            exit 1
+          fi
+          
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-pages
+          path: output
+
+  publish:
+    needs: [build-site, build-firmware, set-version]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        
+      - name: Debug link analysis
+        run: |
+          find . -type l -not -path "./.git/*" -ls | tee repo_symlinks.txt
+          find . -type f -links +1 -not -path "./.git/*" -ls | tee repo_hardlinks.txt
+           
+      - name: Download firmwares with zero-tolerance approach
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CLEAN_DIR=$(mktemp -d)
+          firmwares=($(echo '${{ inputs.firmwares_json }}' | jq -r '.[].name'))
+          for name in "${firmwares[@]}"; do
+            mkdir -p "$CLEAN_DIR/$name"
+            tmp_download=$(mktemp -d)
+            gh run download -n "$name" -D "$tmp_download"
+            find "$tmp_download" -type f \( -name "*.json" -o -name "*.bin" \) | while read file; do
+              rel_path="${file#$tmp_download/}"
+              target_dir="$CLEAN_DIR/$name/$(dirname "$rel_path")"
+              mkdir -p "$target_dir"
+              cp --dereference "$file" "$target_dir/"
+            done
+            rm -rf "$tmp_download"
+            version="${{ needs.set-version.outputs.version }}"
+            mkdir -p "$name/$version"
+            cp -R --dereference "$CLEAN_DIR/$name"/* "$name/"
+          done
+          rm -rf "$CLEAN_DIR"
+
+      - name: Create GitHub release assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=${{ needs.set-version.outputs.version }}
+          firmwares=($(echo '${{ inputs.firmwares_json }}' | jq -r '.[].name'))
+          for name in "${firmwares[@]}"; do
+            # Create temporary directory for release packaging
+            tmp_release=$(mktemp -d)
+            mkdir -p "$tmp_release/$version"
+            cp -R --dereference "$name/$version"/* "$tmp_release/$version/"
+            
+            # Create zip file with absolute path to ensure proper location
+            zip_file="$(pwd)/$name.zip"
+            (cd "$tmp_release" && zip -r "$zip_file" .)
+            
+            # Upload using full path to zip file
+            gh release upload --clobber "$version" "$zip_file"
+            
+            # Clean up
+            rm -rf "$tmp_release"
+            rm -f "$zip_file"
+          done
+      
+      - name: Download GitHub Pages artifact
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p artifact
+          gh run download -n "github-pages" -D artifact
+          rm -rf output
+          mkdir -p output
+          cp -R --dereference artifact/* output/
+
+      - name: Prepare firmware directories
+        run: |
+          version="${{ needs.set-version.outputs.version }}"
+          firmwares=($(echo '${{ inputs.firmwares_json }}' | jq -r '.[].name'))
+          for name in "${firmwares[@]}"; do
+            mkdir -p "output/$name/$version"
+            echo '{"name":"'$name'","version":"'$version'","new_install_prompt_erase":true,"builds":[{"chipFamily":"ESP32","parts":[{"path":"firmware.bin","offset":0}]}]}' > "output/$name/$version/manifest.json"
+            if [ -f "$name/$version/firmware.bin" ]; then
+              cp --dereference "$name/$version/firmware.bin" "output/$name/$version/"
+            else
+              dd if=/dev/zero of="output/$name/$version/firmware.bin" bs=1024 count=10
+            fi
+          done
+
+      - name: Final verification
+        run: |
+          symlinks=$(find output -type l | wc -l)
+          hardlinks=$(find output -type f -links +1 | wc -l)
+          
+          echo "Symlinks found: $symlinks"
+          echo "Hard links found: $hardlinks"
+          
+          if [ "$symlinks" -gt 0 ] || [ "$hardlinks" -gt 0 ]; then
+            echo "ERROR: Found links in output directory!"
+            [ "$symlinks" -gt 0 ] && echo "Symlinks:" && find output -type l -ls
+            [ "$hardlinks" -gt 0 ] && echo "Hard links:" && find output -type f -links +1 -ls
+            exit 1
+          fi
+          
+          echo "=== OUTPUT DIRECTORY STRUCTURE ==="
+          find output -type f | sort
+          du -sh output
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'output'
+          
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
