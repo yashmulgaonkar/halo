@@ -1,0 +1,21 @@
+name: Build and Release Halo TFT LCD Firmware
+
+on:
+  push:
+    paths:
+      - 'TFT_LCD/**'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    uses: ./.github/workflows/reusable_publish.yml
+    with:
+      core_yaml_path: 'TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1-Core.yaml'
+      firmwares_json: |
+        [
+          {
+            "name": "halo-tft",
+            "yaml": "TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml"
+          }
+        ]
+      static_files_path: 'static'
