@@ -35,9 +35,9 @@ jobs:
       - name: Fetch Last Merged PR Body
         id: last_pr
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          PR_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+          PR_INFO=$(curl -s -H "Authorization: token $PAT_TOKEN" \
             "https://api.github.com/repos/${{ github.repository }}/pulls?state=closed&sort=updated&direction=desc&per_page=1")
           PR_BODY=$(echo "$PR_INFO" | jq -r '.[0].body')
           echo "$PR_BODY" > pr_body.txt
@@ -50,7 +50,7 @@ jobs:
           tag: ${{ steps.read_version.outputs.version }}
           name: Release ${{ steps.read_version.outputs.version }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
 
   build-firmware:
     needs: set-version
