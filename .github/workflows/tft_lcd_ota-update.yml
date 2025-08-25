@@ -78,49 +78,6 @@ jobs:
           echo "Build completed. Checking for firmware files..."
           find .esphome/build -name "*.bin" -type f
           
-      - name: Generate OTA Manifest
-        run: |
-          cd TFT_LCD/T-Display-Long/V1/Firmware/ESPHome
-          # Find the compiled firmware file
-          FIRMWARE_FILE=$(find .esphome/build -name "*.bin" -type f | head -n 1)
-          if [ -z "$FIRMWARE_FILE" ]; then
-            echo "Error: No firmware file found"
-            exit 1
-          fi
-          
-          # Get file size and hash
-          FILE_SIZE=$(stat -c%s "$FIRMWARE_FILE")
-          FILE_HASH=$(sha256sum "$FIRMWARE_FILE" | cut -d' ' -f1)
-          
-          # Create manifest.json with correct paths
-          cat > manifest.json << EOF
-          {
-            "name": "Halo TFT LCD Firmware",
-            "version": "${{ env.project_version }}",
-            "new_install_prompt_erase": true,
-            "builds": [
-              {
-                "chipFamily": "ESP32",
-                "parts": [
-                  {
-                    "path": "firmware.bin",
-                    "offset": 0x10000
-                  }
-                ]
-              }
-            ],
-            "urls": [
-              "https://${{ github.repository_owner }}.github.io/${{ github.repository }}/firmware/$(basename "$FIRMWARE_FILE")"
-            ]
-          }
-          EOF
-          
-          echo "Generated manifest.json:"
-          cat manifest.json
-          
-          # Copy firmware to a standard name for the manifest
-          cp "$FIRMWARE_FILE" firmware.bin
-          
       - name: Debug - Show Build Directory
         run: |
           cd TFT_LCD/T-Display-Long/V1/Firmware/ESPHome
@@ -156,8 +113,6 @@ jobs:
             TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/.esphome/build/*/.pioenvs/*/firmware.factory.bin
             TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/.esphome/build/*/.pioenvs/*/firmware.bin
             TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/.esphome/build/*/*.bin
-            TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/firmware.bin
-            TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/manifest.json
           if-no-files-found: error
 
   build-site:
@@ -214,44 +169,12 @@ jobs:
         run: |-
           mkdir -p output/firmware
           cp -r firmware/* output/firmware/
-          
-          # Ensure manifest.json is accessible at the root for OTA updates
-          if [ -f "firmware/manifest.json" ]; then
-            cp firmware/manifest.json output/
-            echo "Manifest copied to output root for OTA access"
-          fi
-          
-          # Also copy to firmware subdirectory for organization
-          if [ -f "firmware/manifest.json" ]; then
-            cp firmware/manifest.json output/firmware/
-            echo "Manifest also copied to firmware subdirectory"
-          fi
 
       - name: Download Site Artifact
         uses: actions/download-artifact@v4.1.8
         with:
           name: site
           path: output
-
-      - name: Final verification
-        run: |
-          echo "=== OUTPUT DIRECTORY STRUCTURE ==="
-          find output -type f | sort
-          
-          echo "=== MANIFEST LOCATIONS ==="
-          if [ -f "output/manifest.json" ]; then
-            echo "✅ Root manifest.json found"
-            cat output/manifest.json
-          else
-            echo "❌ Root manifest.json NOT found"
-          fi
-          
-          if [ -f "output/firmware/manifest.json" ]; then
-            echo "✅ Firmware subdirectory manifest.json found"
-            cat output/firmware/manifest.json
-          else
-            echo "❌ Firmware subdirectory manifest.json NOT found"
-          fi
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3.0.1
