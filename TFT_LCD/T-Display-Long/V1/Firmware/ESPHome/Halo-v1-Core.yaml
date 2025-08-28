@@ -16,8 +16,8 @@ esp32:
     type: esp-idf
     advanced:
       enable_idf_experimental_features: true
-    platform_version: 6.9.0
-    version: 5.3.1
+    # platform_version: 6.9.0
+    # version: 5.3.1
 
 esp32_improv:
   authorizer: none
