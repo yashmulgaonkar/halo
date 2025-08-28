@@ -113,6 +113,7 @@ jobs:
             TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/.esphome/build/*/.pioenvs/*/firmware.factory.bin
             TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/.esphome/build/*/.pioenvs/*/firmware.bin
             TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/.esphome/build/*/*.bin
+            TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/.esphome/build/*/.pioenvs/*/manifest.json
           if-no-files-found: error
 
   build-site:
