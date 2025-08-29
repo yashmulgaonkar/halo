@@ -136,6 +136,8 @@ jobs:
           path: output
 
   publish:
+    # Option B: only deploy Pages when the workflow runs on a branch (not on tags)
+    if: startsWith(github.ref, 'refs/heads/')
     name: Publish to GitHub Pages
     runs-on: ubuntu-latest
     needs:
@@ -177,77 +179,57 @@ jobs:
           name: site
           path: output
 
-      # ------------------- ADDED: Ensure manifest.json exists -------------------
-      - name: Ensure manifest.json exists for Web Installer (non-breaking)
+      # Ensure manifest.json exists but do not alter behavior if it already does
+      - name: Generate Firmware Manifest (minimal, esp-web-tools schema)
         working-directory: output/firmware
         env:
-          CHIP_FAMILY: ESP32-S3            # change if your board differs
-          DEVICE_NAME: ${{ env.DEVICE_NAME }}
+          VERSION: ${{ env.project_version }}
+          DEVICE: ${{ env.DEVICE_NAME }}
+          CHIP_FAMILY: ESP32-S3   # change if needed
         run: |
           set -euo pipefail
-          # If a manifest already exists (from ESPHome build), leave it alone.
           if [ -f "manifest.json" ]; then
-            echo "Existing manifest.json found. Using it as-is."
+            echo "manifest.json already present. Leaving as-is."
             exit 0
           fi
-
-          echo "No manifest.json found in output/firmware. Generating a minimal one."
-
-          # Prefer factory -> ota -> any .bin
           FACTORY="$(ls -1 **/*.factory.bin 2>/dev/null | head -n1 || true)"
           OTA="$(ls -1 **/*.ota.bin 2>/dev/null | head -n1 || true)"
-          if [ -z "${OTA}" ]; then
-            OTA="$(ls -1 **/firmware.bin 2>/dev/null | head -n1 || true)"
+          [ -z "$OTA" ] && OTA="$(ls -1 **/firmware.bin 2>/dev/null | head -n1 || true)"
+          if [ -z "$FACTORY" ]; then
+            FACTORY="$(ls -1 **/*.bin 2>/dev/null | head -n1 || true)"
           fi
-          if [ -z "${FACTORY}" ]; then
-            FACTORY="$(ls -1 **/*.bin 2>/dev/null | grep -v '\.ota\.bin$' | head -n1 || true)"
-          fi
-
-          if [ -z "${FACTORY}" ]; then
-            echo "ERROR: Could not find a factory .bin to reference."
+          if [ -z "$FACTORY" ]; then
+            echo "ERROR: No firmware .bin found in output/firmware to reference."
             find . -type f
             exit 1
           fi
-
-          # Compute md5 for OTA if present
           OTA_MD5=""
-          if [ -n "${OTA}" ] && [ -f "${OTA}" ]; then
-            OTA_MD5="$(md5sum "${OTA}" | awk '{print $1}')"
+          if [ -n "$OTA" ] && [ -f "$OTA" ]; then
+            OTA_MD5="$(md5sum "$OTA" | awk '{print $1}')"
           fi
-
-          VERSION="${GITHUB_REF_NAME:-latest}"
-
-          # Create minimal manifest compatible with esp-web-tools
-          # - If OTA is missing, we still produce a manifest with only 'parts'
           {
             echo '{'
-            echo '  "name": "'${DEVICE_NAME}'.TFT-LCD",'
-            echo '  "version": "'${VERSION}'",'
+            echo '  "name": "'$DEVICE'.TFT-LCD",'
+            echo '  "version": "'$VERSION'",'
             echo '  "home_assistant_domain": "esphome",'
             echo '  "new_install_prompt_erase": false,'
             echo '  "builds": ['
             echo '    {'
-            echo '      "chipFamily": "'${CHIP_FAMILY}'",'
-            if [ -n "${OTA}" ]; then
+            echo '      "chipFamily": "'$CHIP_FAMILY'",'
+            if [ -n "$OTA" ]; then
               echo '      "ota": {'
-              echo '        "path": "'${OTA}'",'
-              if [ -n "${OTA_MD5}" ]; then
-                echo '        "md5": "'${OTA_MD5}'",'
-              fi
+              echo '        "path": "'$OTA'",'
+              [ -n "$OTA_MD5" ] && echo '        "md5": "'$OTA_MD5'",'
               echo '        "summary": ""'
               echo '      },'
             fi
-            echo '      "parts": ['
-            echo '        { "path": "'${FACTORY}'", "offset": 0 }'
-            echo '      ]'
+            echo '      "parts": [ { "path": "'$FACTORY'", "offset": 0 } ]'
             echo '    }'
             echo '  ]'
             echo '}'
           } > manifest.json
-
           echo "Generated manifest.json:"
           cat manifest.json
-      # ------------------------------------------------------------------------
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3.0.1
