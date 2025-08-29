@@ -136,8 +136,6 @@ jobs:
           path: output
 
   publish:
-    # Option B: only deploy Pages when the workflow runs on a branch (not on tags)
-    if: startsWith(github.ref, 'refs/heads/')
     name: Publish to GitHub Pages
     runs-on: ubuntu-latest
     needs:
@@ -179,57 +177,50 @@ jobs:
           name: site
           path: output
 
-      # Ensure manifest.json exists but do not alter behavior if it already does
-      - name: Generate Firmware Manifest (minimal, esp-web-tools schema)
+      # ------------------- ADDED: Generate manifest.json if missing -------------------
+      - name: Generate Firmware Manifest
         working-directory: output/firmware
         env:
           VERSION: ${{ env.project_version }}
           DEVICE: ${{ env.DEVICE_NAME }}
-          CHIP_FAMILY: ESP32-S3   # change if needed
+          CHIP_FAMILY: ESP32-S3   # adjust for your board
         run: |
-          set -euo pipefail
           if [ -f "manifest.json" ]; then
-            echo "manifest.json already present. Leaving as-is."
+            echo "manifest.json already exists"
             exit 0
           fi
-          FACTORY="$(ls -1 **/*.factory.bin 2>/dev/null | head -n1 || true)"
-          OTA="$(ls -1 **/*.ota.bin 2>/dev/null | head -n1 || true)"
-          [ -z "$OTA" ] && OTA="$(ls -1 **/firmware.bin 2>/dev/null | head -n1 || true)"
-          if [ -z "$FACTORY" ]; then
-            FACTORY="$(ls -1 **/*.bin 2>/dev/null | head -n1 || true)"
-          fi
-          if [ -z "$FACTORY" ]; then
-            echo "ERROR: No firmware .bin found in output/firmware to reference."
-            find . -type f
-            exit 1
-          fi
+
+          FACTORY=$(ls -1 *.factory.bin 2>/dev/null | head -n1 || true)
+          OTA=$(ls -1 firmware.bin 2>/dev/null | head -n1 || true)
           OTA_MD5=""
           if [ -n "$OTA" ] && [ -f "$OTA" ]; then
-            OTA_MD5="$(md5sum "$OTA" | awk '{print $1}')"
+            OTA_MD5=$(md5sum "$OTA" | awk '{print $1}')
           fi
+
+          cat > manifest.json <<EOF
           {
-            echo '{'
-            echo '  "name": "'$DEVICE'.TFT-LCD",'
-            echo '  "version": "'$VERSION'",'
-            echo '  "home_assistant_domain": "esphome",'
-            echo '  "new_install_prompt_erase": false,'
-            echo '  "builds": ['
-            echo '    {'
-            echo '      "chipFamily": "'$CHIP_FAMILY'",'
-            if [ -n "$OTA" ]; then
-              echo '      "ota": {'
-              echo '        "path": "'$OTA'",'
-              [ -n "$OTA_MD5" ] && echo '        "md5": "'$OTA_MD5'",'
-              echo '        "summary": ""'
-              echo '      },'
-            fi
-            echo '      "parts": [ { "path": "'$FACTORY'", "offset": 0 } ]'
-            echo '    }'
-            echo '  ]'
-            echo '}'
-          } > manifest.json
+            "name": "$DEVICE",
+            "version": "$VERSION",
+            "home_assistant_domain": "esphome",
+            "new_install_prompt_erase": false,
+            "builds": [{
+              "chipFamily": "$CHIP_FAMILY",
+              "ota": {
+                "path": "$OTA",
+                "md5": "$OTA_MD5",
+                "summary": ""
+              },
+              "parts": [
+                { "path": "$FACTORY", "offset": 0 }
+              ]
+            }]
+          }
+          EOF
+
           echo "Generated manifest.json:"
           cat manifest.json
+
+      # -------------------------------------------------------------------------------
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3.0.1
