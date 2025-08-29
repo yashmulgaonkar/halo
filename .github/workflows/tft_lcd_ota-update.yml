@@ -178,47 +178,89 @@ jobs:
           path: output
 
       # ------------------- ADDED: Generate manifest.json if missing -------------------
-      - name: Generate Firmware Manifest
+      - name: Generate Firmware Manifest (ensure bin paths are set)
         working-directory: output/firmware
         env:
           VERSION: ${{ env.project_version }}
           DEVICE: ${{ env.DEVICE_NAME }}
-          CHIP_FAMILY: ESP32-S3   # adjust for your board
+          CHIP_FAMILY: ESP32-S3   # change if needed (ESP32, ESP32-S2, ESP32-C3, ESP8266)
         run: |
+          set -euo pipefail
+
+          # If a manifest already exists, keep it as-is.
           if [ -f "manifest.json" ]; then
-            echo "manifest.json already exists"
+            echo "manifest.json already exists. Leaving it untouched."
             exit 0
           fi
 
-          FACTORY=$(ls -1 *.factory.bin 2>/dev/null | head -n1 || true)
-          OTA=$(ls -1 firmware.bin 2>/dev/null | head -n1 || true)
-          OTA_MD5=""
-          if [ -n "$OTA" ] && [ -f "$OTA" ]; then
-            OTA_MD5=$(md5sum "$OTA" | awk '{print $1}')
+          echo "Looking for firmware files in: $(pwd)"
+          echo "Tree:"
+          find . -maxdepth 3 -type f -print | sed 's|^\./||'
+
+          # Prefer factory -> any non-OTA bin
+          FACTORY="$(find . -type f -name '*.factory.bin' | head -n1 || true)"
+          if [ -z "${FACTORY}" ]; then
+            # Fall back to any .bin that is not explicitly an OTA file
+            FACTORY="$(find . -type f -name '*.bin' ! -name '*.ota.bin' | head -n1 || true)"
           fi
 
-          cat > manifest.json <<EOF
+          # OTA preference: *.ota.bin, then a plain firmware.bin
+          OTA="$(find . -type f -name '*.ota.bin' | head -n1 || true)"
+          if [ -z "${OTA}" ]; then
+            OTA="$(find . -type f -name 'firmware.bin' | head -n1 || true)"
+          fi
+
+          # Must have *some* factory image to flash via 'parts'
+          if [ -z "${FACTORY}" ]; then
+            echo "ERROR: No factory (or fallback) .bin found to reference in manifest."
+            exit 1
+          fi
+
+          # Normalize to relative paths without ./ prefix
+          FACTORY_REL="${FACTORY#./}"
+          OTA_REL="${OTA#./}"
+
+          # Compute MD5 for OTA if present
+          OTA_MD5=""
+          if [ -n "${OTA}" ] && [ -f "${OTA}" ]; then
+            OTA_MD5="$(md5sum "${OTA}" | awk '{print $1}')"
+          fi
+
+          echo "Selected FACTORY: ${FACTORY_REL}"
+          if [ -n "${OTA_REL}" ]; then
+            echo "Selected OTA: ${OTA_REL} (md5: ${OTA_MD5})"
+          else
+            echo "No OTA image found; manifest will omit 'ota' block."
+          fi
+
+          # Build manifest.json (ESP Web Tools schema)
           {
-            "name": "$DEVICE",
-            "version": "$VERSION",
-            "home_assistant_domain": "esphome",
-            "new_install_prompt_erase": false,
-            "builds": [{
-              "chipFamily": "$CHIP_FAMILY",
-              "ota": {
-                "path": "$OTA",
-                "md5": "$OTA_MD5",
-                "summary": ""
-              },
-              "parts": [
-                { "path": "$FACTORY", "offset": 0 }
-              ]
-            }]
-          }
-          EOF
+            echo '{'
+            echo '  "name": "'${DEVICE}'.TFT-LCD",'
+            echo '  "version": "'${VERSION}'",'
+            echo '  "home_assistant_domain": "esphome",'
+            echo '  "new_install_prompt_erase": false,'
+            echo '  "builds": ['
+            echo '    {'
+            echo '      "chipFamily": "'${CHIP_FAMILY}'",'
+            if [ -n "${OTA_REL}" ]; then
+              echo '      "ota": {'
+              echo '        "path": "'${OTA_REL}'",'
+              [ -n "${OTA_MD5}" ] && echo '        "md5": "'${OTA_MD5}'",'
+              echo '        "summary": ""'
+              echo '      },'
+            fi
+            echo '      "parts": ['
+            echo '        { "path": "'${FACTORY_REL}'", "offset": 0 }'
+            echo '      ]'
+            echo '    }'
+            echo '  ]'
+            echo '}'
+          } > manifest.json
 
           echo "Generated manifest.json:"
           cat manifest.json
+
 
       # -------------------------------------------------------------------------------
 
