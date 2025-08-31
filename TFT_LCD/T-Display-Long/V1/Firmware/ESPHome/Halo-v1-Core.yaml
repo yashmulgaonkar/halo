@@ -278,10 +278,18 @@ color:
     blue: 0%
 
 time:
-  - platform: homeassistant
-    id: ha_time
-    on_time_sync:
-      - script.execute: time_update
+  #- platform: homeassistant
+  #  id: ha_time
+  #  on_time_sync:
+  #    - script.execute: time_update
+
+  - platform: sntp
+    id: sntp_time
+    timezone: America/New_York
+    servers:
+     - 0.pool.ntp.org
+     - 1.pool.ntp.org
+     - 2.pool.ntp.org
 
 script:
   - id: time_update
