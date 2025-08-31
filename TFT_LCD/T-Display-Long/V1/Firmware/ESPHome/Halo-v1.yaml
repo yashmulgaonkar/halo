@@ -16,7 +16,7 @@ esphome:
     version: "${version}"
 
 dashboard_import:
-  package_import_url: github://yashmulgaonkar/halo/TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml@WireGuard
+  package_import_url: github://truffshuff/halo/TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml@WireGuard
   import_full_config: true
 
 ota:
@@ -57,7 +57,7 @@ wireguard:
 
 packages:
   remote_package:
-    url: https://github.com/yashmulgaonkar/halo/
+    url: https://github.com/truffshuff/halo/
     ref: WireGuard
     files:
       - TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1-Core.yaml
