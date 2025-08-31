@@ -385,6 +385,8 @@ sensor:
     nitrogen_dioxide:
       name: Nitrogen Dioxide
       id: "no2"
+      filters:
+      - offset: -0.16
       on_value:
         then:
           - lvgl.label.update:
