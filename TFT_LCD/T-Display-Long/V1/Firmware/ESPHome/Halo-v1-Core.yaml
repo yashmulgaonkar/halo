@@ -22,29 +22,29 @@ esp32:
 esp32_improv:
   authorizer: none
 
-wireguard:
-  address: 10.6.0.2
-  private_key: gFrKaUf1j2DTDmO1gD32op15t3JNAz1W8MVw9GdtBm4=
-  peer_endpoint: 73.86.51.45
-  peer_public_key: OHSVnpenK/ZQauqbjF9sbaqq55yKI8oDGJRfIDZLBns=
+#wireguard:
+#  address: 10.6.0.2
+#  private_key: gFrKaUf1j2DTDmO1gD32op15t3JNAz1W8MVw9GdtBm4=
+#  peer_endpoint: 73.86.51.45
+#  peer_public_key: OHSVnpenK/ZQauqbjF9sbaqq55yKI8oDGJRfIDZLBns=
 
   # Optional netmask (this is the default, no outgoing traffic
   # will pass through the tunnel if omitted)
-  netmask: 0.0.0.0
+#  netmask: 0.0.0.0
 
   # Optional endpoint port (WireGuard default if omitted)
-  peer_port: 51820
+#  peer_port: 51820
 
   # Optional pre-shared key (omit if not in use)
-  peer_preshared_key: cP9tEJU+AjQcCj993ChLsoYxQd5e3PAIrlN3w1kpaQs=
+#  peer_preshared_key: cP9tEJU+AjQcCj993ChLsoYxQd5e3PAIrlN3w1kpaQs=
 
   # Optional list of ip/mask (any host is allowed if omitted)
-  peer_allowed_ips:
-    - 192.168.1.0/24
-    - 10.6.0.1/32 # the /32 can be omitted for single host
-    - 10.6.0.2/32
+#  peer_allowed_ips:
+#    - 192.168.1.0/24
+#    - 10.6.0.1/32 # the /32 can be omitted for single host
+#    - 10.6.0.2/32
   # Optional keepalive (disabled by default)
-  peer_persistent_keepalive: 25s
+#  peer_persistent_keepalive: 25s
 
 external_components:
   - source: github://yashmulgaonkar/esphome-components
