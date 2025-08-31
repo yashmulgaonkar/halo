@@ -22,6 +22,30 @@ esp32:
 esp32_improv:
   authorizer: none
 
+wireguard:
+  address: 10.6.0.2
+  private_key: gFrKaUf1j2DTDmO1gD32op15t3JNAz1W8MVw9GdtBm4=
+  peer_endpoint: 73.86.51.45
+  peer_public_key: OHSVnpenK/ZQauqbjF9sbaqq55yKI8oDGJRfIDZLBns=
+
+  # Optional netmask (this is the default, no outgoing traffic
+  # will pass through the tunnel if omitted)
+  netmask: 0.0.0.0
+
+  # Optional endpoint port (WireGuard default if omitted)
+  peer_port: 51820
+
+  # Optional pre-shared key (omit if not in use)
+  peer_preshared_key: cP9tEJU+AjQcCj993ChLsoYxQd5e3PAIrlN3w1kpaQs=
+
+  # Optional list of ip/mask (any host is allowed if omitted)
+  peer_allowed_ips:
+    - 192.168.1.0/24
+    - 10.6.0.1/32 # the /32 can be omitted for single host
+    - 10.6.0.2/32
+  # Optional keepalive (disabled by default)
+  peer_persistent_keepalive: 25s
+
 external_components:
   - source: github://yashmulgaonkar/esphome-components
     components: [axs15231, sy6970]
@@ -311,7 +335,15 @@ number:
 binary_sensor:
   - platform: status
     name: Online
-    id: ink_ha_connected    
+    id: ink_ha_connected 
+
+   - platform: wireguard
+    status:
+      name: 'WireGuard Status'
+
+    - platform: wireguard
+    enabled:
+      name: 'WireGuard Enabled'
 
 sensor:
   - platform: uptime
@@ -333,6 +365,10 @@ sensor:
     device_class: "aqi"
     state_class: "measurement"
     update_interval: never  # We'll update it manually
+
+  - platform: wireguard
+    latest_handshake:
+      name: 'WireGuard Latest Handshake'
 
   - platform: scd4x
     id: scd40
@@ -928,7 +964,11 @@ text_sensor:
       else if (id(sen55_voc).state < 400) {
         return std::string("Very abnormal");} 
       else {
-        return std::string("Extremely abnormal");}    
+        return std::string("Extremely abnormal");} 
+        
+  - platform: wireguard
+    address:
+      name: 'WireGuard Address'
 
 light:
   # - platform: esp32_rmt_led_strip
