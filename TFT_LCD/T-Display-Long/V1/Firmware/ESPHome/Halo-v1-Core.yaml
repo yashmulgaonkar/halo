@@ -298,7 +298,7 @@ script:
           id: timeVal
           text: !lambda |-
             static char time_buf[17];
-            auto now = id(ha_time).now();
+            auto now = id(sntp_time).now();
             bool is_pm = now.hour >= 12;
             int hour_12 = now.hour % 12;
             if (hour_12 == 0) {
