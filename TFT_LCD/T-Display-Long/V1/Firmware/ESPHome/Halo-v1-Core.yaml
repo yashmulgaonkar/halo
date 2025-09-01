@@ -345,13 +345,13 @@ binary_sensor:
     name: Online
     id: ink_ha_connected 
 
-   - platform: wireguard
-    status:
-      name: 'WireGuard Status'
+   #- platform: wireguard
+   # status:
+   #   name: 'WireGuard Status'
 
-    - platform: wireguard
-    enabled:
-      name: 'WireGuard Enabled'
+   # - platform: wireguard
+   # enabled:
+   #   name: 'WireGuard Enabled'
 
 sensor:
   - platform: uptime
@@ -374,9 +374,9 @@ sensor:
     state_class: "measurement"
     update_interval: never  # We'll update it manually
 
-  - platform: wireguard
-    latest_handshake:
-      name: 'WireGuard Latest Handshake'
+  #- platform: wireguard
+  #  latest_handshake:
+  #    name: 'WireGuard Latest Handshake'
 
   - platform: scd4x
     id: scd40
@@ -974,9 +974,9 @@ text_sensor:
       else {
         return std::string("Extremely abnormal");} 
         
-  - platform: wireguard
-    address:
-      name: 'WireGuard Address'
+  #- platform: wireguard
+  #  address:
+  #    name: 'WireGuard Address'
 
 light:
   # - platform: esp32_rmt_led_strip
