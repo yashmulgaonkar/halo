@@ -33,10 +33,10 @@ wifi:
 
 wireguard:
   address: 10.6.0.2
-  private_key: gFrKaUf1j2DTDmO1gD32op15t3JNAz1W8MVw9GdtBm4=
-  peer_endpoint: 73.86.51.45
-  peer_public_key: OHSVnpenK/ZQauqbjF9sbaqq55yKI8oDGJRfIDZLBns=
-
+  private_key: !secret wg_privkey
+  peer_endpoint: !secret wg_peerendpt
+  peer_public_key: !secret wg_pubkey
+  
   # Optional netmask (this is the default, no outgoing traffic
   # will pass through the tunnel if omitted)
   netmask: 0.0.0.0
@@ -45,7 +45,7 @@ wireguard:
   peer_port: 51820
 
   # Optional pre-shared key (omit if not in use)
-  peer_preshared_key: cP9tEJU+AjQcCj993ChLsoYxQd5e3PAIrlN3w1kpaQs=
+  peer_preshared_key: !secret wg_shrdkey
 
   # Optional list of ip/mask (any host is allowed if omitted)
   peer_allowed_ips:
