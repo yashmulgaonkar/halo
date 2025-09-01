@@ -23,14 +23,6 @@ ota:
   - platform: esphome
     id: ota_default
 
-wifi:
-  on_connect:
-    - delay: 5s # Gives time for improv results to be transmitted
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "Halo Hotspot"
-
 wireguard:
   address: 10.6.0.2
   private_key: !secret wg_privkey
@@ -54,6 +46,32 @@ wireguard:
     - 10.6.0.2/32
   # Optional keepalive (disabled by default)
   peer_persistent_keepalive: 25s
+
+binary_sensor:
+  - platform: wireguard
+    status:
+      name: 'WireGuard Status'
+
+  - platform: wireguard
+    enabled:
+      name: 'WireGuard Enabled'
+sensor:
+  - platform: wireguard
+    latest_handshake:
+      name: 'WireGuard Latest Handshake'
+
+text_sensor:
+  - platform: wireguard
+    address:
+      name: 'WireGuard Address'
+
+wifi:
+  on_connect:
+    - delay: 5s # Gives time for improv results to be transmitted
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Halo Hotspot"
 
 packages:
   remote_package:
