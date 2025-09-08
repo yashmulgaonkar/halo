@@ -184,7 +184,7 @@ display:
     cs_pin: 12
     reset_pin: 16
     rotation: 0
-    auto_clear_enabled: true
+    auto_clear_enabled: false
 
 touchscreen:
   - platform: axs15231
