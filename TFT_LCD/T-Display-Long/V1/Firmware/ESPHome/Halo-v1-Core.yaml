@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.9.7.1"
+  version: "25.8.28.4"
   device_description: ${name} - v${version}.
 
 psram:
@@ -120,7 +120,7 @@ interval:
           then:
             - light.turn_on:
                 id: rgb_light
-                effect: "Addressable Rainbow"
+                effect: "Rainbow Effect With Custom Values"
             - lambda: 'id(cycleCounter) += 1;'
 
   - interval: 1s
@@ -265,14 +265,18 @@ script:
       - lvgl.label.update:
           id: timeVal
           text: !lambda |-
-            static char time_buf[16];
+            static char time_buf[17];
             auto now = id(ha_time).now();
+            bool is_pm = now.hour >= 12;
+            int hour_12 = now.hour % 12;
+            if (hour_12 == 0) {
+              hour_12 = 12; // 12 AM/PM should be displayed as 12, not 0
+            }
             if(id(time_format).state) {
               snprintf(time_buf, sizeof(time_buf), "%02d:%02d", now.hour, now.minute);
-            } else {
-              int h12 = now.hour % 12;
-              if (h12 == 0) h12 = 12;
-              snprintf(time_buf, sizeof(time_buf), "%2d:%02d%s", h12, now.minute, now.hour >= 12 ? "PM" : "AM");
+            }
+            else {
+              snprintf(time_buf, sizeof(time_buf), "%2d:%02d%s", hour_12, now.minute, is_pm ? "PM" : "AM");
             }
             return time_buf;
 
@@ -371,7 +375,7 @@ sensor:
                                 id: co2_value
                                 text_color: my_red                                                                              
     automatic_self_calibration: false
-    update_interval: 15s
+    update_interval: 10s
     measurement_mode: "periodic"
     i2c_id: lily_i2c
     ambient_pressure_compensation_source: bme280pressure
@@ -598,7 +602,7 @@ sensor:
                             - lvgl.label.update:
                                 id: nh3_value
                                 text_color: my_red  # High level, unsafe indoors                            
-    update_interval: 15s
+    update_interval: 10s
     i2c_id: lily_i2c
     address: 0x75
 
@@ -645,65 +649,65 @@ sensor:
           - lvgl.label.update:
               id: aqi_value
               text: !lambda |-
-                static char buffer[8];
-                float val = x;
-                int aqi;
-                
+                float val = x; // PM2.5 value
+                float aqi = 0.0;
+
                 if (val <= 9.0) {
-                  aqi = (int)(val * 5.56);
+                  aqi = ((50.0 - 0.0) / (9.0 - 0.0)) * (val - 0.0) + 0.0;
                 } else if (val <= 35.4) {
-                  aqi = (int)(51 + (val - 9.1) * 1.86);
+                  aqi = ((100.0 - 51.0) / (35.4 - 9.1)) * (val - 9.1) + 51.0;
                 } else if (val <= 55.4) {
-                  aqi = (int)(101 + (val - 35.5) * 2.46);
+                  aqi = ((150.0 - 101.0) / (55.4 - 35.5)) * (val - 35.5) + 101.0;
                 } else if (val <= 125.4) {
-                  aqi = (int)(151 + (val - 55.5) * 0.70);
+                  aqi = ((200.0 - 151.0) / (125.4 - 55.5)) * (val - 55.5) + 151.0;
                 } else if (val <= 225.4) {
-                  aqi = (int)(201 + (val - 125.5) * 0.99);
+                  aqi = ((300.0 - 201.0) / (225.4 - 125.5)) * (val - 125.5) + 201.0;
                 } else if (val <= 500.4) {
-                  aqi = (int)(301 + (val - 250.5) * 0.80);
+                  aqi = ((500.0 - 301.0) / (500.4 - 250.5)) * (val - 250.5) + 301.0;
                 } else {
                   return "EVAC";
                 }
-                
-                snprintf(buffer, sizeof(buffer), " %d", aqi);
+
+                static char buffer[10];
+                snprintf(buffer, sizeof(buffer), " %d", (int)aqi);
                 return buffer;
 
           - lvgl.widget.update:
               id: aqi_widget
               bg_color: !lambda |-
-                float val = x;
-                int aqi;
-                
-                if (val <= 9.0) {
-                  aqi = (int)(val * 5.56);
-                } else if (val <= 35.4) {
-                  aqi = (int)(51 + (val - 9.1) * 1.86);
-                } else if (val <= 55.4) {
-                  aqi = (int)(101 + (val - 35.5) * 2.46);
-                } else if (val <= 125.4) {
-                  aqi = (int)(151 + (val - 55.5) * 0.70);
-                } else if (val <= 225.4) {
-                  aqi = (int)(201 + (val - 125.5) * 0.99);
-                } else if (val <= 500.4) {
-                  aqi = (int)(301 + (val - 250.5) * 0.80);
-                } else {
-                  aqi = 500;
-                }
-                
-                id(computed_halo_aqi).publish_state(aqi);
+                float val = x; // PM2.5 value
+                float aqi = 0.0;
 
-                if (aqi <= 50) {
-                  return lv_color_hex(0x76fa76);
-                } else if (aqi <= 100) {
-                  return lv_color_hex(0xFFFF00);
-                } else if (aqi <= 150) {
-                  return lv_color_hex(0xFFA500);
-                } else if (aqi <= 200) {
-                  return lv_color_hex(0xFF0000);
-                } else if (aqi <= 300) {
-                  return lv_color_hex(0x800080);
+                if (val <= 9.0) {
+                  aqi = ((50.0 - 0.0) / (9.0 - 0.0)) * (val - 0.0) + 0.0;
+                } else if (val <= 35.4) {
+                  aqi = ((100.0 - 51.0) / (35.4 - 9.1)) * (val - 9.1) + 51.0;
+                } else if (val <= 55.4) {
+                  aqi = ((150.0 - 101.0) / (55.4 - 35.5)) * (val - 35.5) + 101.0;
+                } else if (val <= 125.4) {
+                  aqi = ((200.0 - 151.0) / (125.4 - 55.5)) * (val - 55.5) + 151.0;
+                } else if (val <= 225.4) {
+                  aqi = ((300.0 - 201.0) / (225.4 - 125.5)) * (val - 125.5) + 201.0;
+                } else if (val <= 500.4) {
+                  aqi = ((500.0 - 301.0) / (500.4 - 250.5)) * (val - 250.5) + 301.0;
                 } else {
-                  return lv_color_hex(0x800000);
+                  aqi = 500.0;
+                }
+                id(computed_halo_aqi).publish_state((int)aqi);
+
+                // Return color based on AQI
+                if (aqi <= 50) {
+                  return lv_color_hex(0x76fa76); // Green
+                } else if (aqi <= 100) {
+                  return lv_color_hex(0xFFFF00); // Yellow
+                } else if (aqi <= 150) {
+                  return lv_color_hex(0xFFA500); // Orange
+                } else if (aqi <= 200) {
+                  return lv_color_hex(0xFF0000); // Red
+                } else if (aqi <= 300) {
+                  return lv_color_hex(0x800080); // Purple
+                } else {
+                  return lv_color_hex(0x800000); // Maroon
                 }        
 
     pm_4_0:
@@ -878,7 +882,7 @@ sensor:
                                 text_color: my_red                      
     i2c_id: lily_i2c
     address: 0x69
-    update_interval: 12s    
+    update_interval: 10s    
 
 button:
   - platform: restart
@@ -956,8 +960,6 @@ light:
     effects:
       - addressable_rainbow:
           name: Addressable Rainbow
-          speed: 5
-          width: 20
 
   - platform: monochromatic
     output: backlight
@@ -969,7 +971,7 @@ lvgl:
     - lily_display
   touchscreens:
     - lily_touch
-  buffer_size: 15%
+  buffer_size: 100%
   pages:            
     - id: main_page
       bg_color: my_black
