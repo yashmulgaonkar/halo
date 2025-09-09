@@ -1,12 +1,12 @@
 #Define Project
 substitutions:
   name: halo
-  version: "25.8.28.4"
+  version: "25.9.8.1"
   device_description: ${name} - v${version}.
 
 psram:
   mode: octal
-  speed: 120MHz
+  # speed: 120MHz
 
 esp32:
   board: esp32-s3-devkitc-1
