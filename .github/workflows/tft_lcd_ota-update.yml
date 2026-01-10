@@ -138,6 +138,7 @@ jobs:
   publish:
     name: Publish to GitHub Pages
     runs-on: ubuntu-latest
+    if: github.ref_type == 'branch'
     needs:
       - build-firmware
       - build-site
