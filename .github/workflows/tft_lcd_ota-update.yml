@@ -12,8 +12,6 @@ on:
       version:
         description: 'The version of the firmware to build'
         required: true
-  release:
-    types: [published]
 
 jobs:
   create-release:
