@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "26.1.9.1"
+  version: "25.9.8.2"
   device_description: ${name} - v${version}.
 
 psram:
@@ -307,6 +307,19 @@ number:
     update_interval: never
     step: 0.1
     mode: box
+  - platform: template
+    name: MICS4514 NO2 Offset
+    id: mics4514_no2_offset
+    restore_value: true
+    initial_value: 0
+    min_value: -1.0
+    max_value: 1.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "ppm"
+    optimistic: true
+    update_interval: never
+    step: 0.01
+    mode: box
 
 binary_sensor:
   - platform: status
@@ -385,6 +398,8 @@ sensor:
     nitrogen_dioxide:
       name: Nitrogen Dioxide
       id: "no2"
+      filters:
+        - lambda: return x - id(mics4514_no2_offset).state;
       on_value:
         then:
           - lvgl.label.update:
