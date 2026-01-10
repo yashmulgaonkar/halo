@@ -138,7 +138,7 @@ jobs:
   publish:
     name: Publish to GitHub Pages
     runs-on: ubuntu-latest
-    if: github.ref_type == 'branch'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs:
       - build-firmware
       - build-site
