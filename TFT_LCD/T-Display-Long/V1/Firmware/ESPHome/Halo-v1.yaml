@@ -24,6 +24,9 @@ ota:
     id: ota_default
 
 wifi:
+  # Disable modem sleep — QSPI/AMOLED panels can blank after long uptime with default power save.
+  power_save_mode: none
+
   on_connect:
     - delay: 5s # Gives time for improv results to be transmitted
 
@@ -32,9 +35,5 @@ wifi:
     ssid: "Halo Hotspot"
 
 packages:
-  remote_package:
-    url: https://github.com/yashmulgaonkar/halo/
-    ref: main
-    files:
-      - TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1-Core.yaml
-    refresh: 0d
+  # Sibling include so CI / branch imports use the Core from the same ref (not hard-coded main).
+  core: !include Halo-v1-Core.yaml

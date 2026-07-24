@@ -1,0 +1,118 @@
+name: Build and Release Halo EPD Firmware
+
+env:
+  DEVICE_NAME: halo-epd
+
+on:
+  push:
+    paths:
+      - 'E-Paper/**'
+      - '.github/workflows/e_paper_ota-update.yml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Override version tag (leave empty to use Core.yaml)'
+        required: false
+        default: ''
+
+jobs:
+  get-version:
+    name: Resolve Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Resolve Version
+        id: resolve
+        run: |
+          set -euo pipefail
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            version="${{ github.event.inputs.version }}"
+          else
+            version=$(awk '/substitutions:/ {found=1} found && /version:/ {print $2; exit}' \
+              E-Paper/Waveshare_BWR/V1/Firmware/ESPHome/Halo_EPD-Core.yaml | tr -d '"')
+          fi
+          if [ -z "${version}" ]; then
+            echo "Error: Could not resolve firmware version"
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: ${version}"
+
+  build-firmware:
+    name: Build Firmware
+    runs-on: ubuntu-latest
+    needs: get-version
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install ESPHome
+        run: pip install esphome
+
+      - name: Build Firmware
+        working-directory: E-Paper/Waveshare_BWR/V1/Firmware/ESPHome
+        run: |
+          set -euo pipefail
+          # Halo_EPD.yaml !includes Core from this checkout (branch/commit under test).
+          esphome compile Halo_EPD.yaml
+          echo "Firmware binaries:"
+          find .esphome -type f -name '*.bin' -print
+
+      - name: Collect Firmware Artifacts
+        working-directory: E-Paper/Waveshare_BWR/V1/Firmware/ESPHome
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          mapfile -t bins < <(find .esphome -type f \( -name 'firmware.factory.bin' -o -name 'firmware.bin' -o -name 'firmware.ota.bin' \) | sort)
+          if [ "${#bins[@]}" -eq 0 ]; then
+            echo "ERROR: No firmware binaries found under .esphome"
+            find .esphome -type f | head -n 200 || true
+            exit 1
+          fi
+          for f in "${bins[@]}"; do
+            cp -v "$f" "artifacts/$(basename "$f")"
+          done
+          ls -la artifacts
+
+      - name: Upload Firmware Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-epd
+          path: E-Paper/Waveshare_BWR/V1/Firmware/ESPHome/artifacts/*
+          if-no-files-found: error
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - get-version
+      - build-firmware
+    permissions:
+      contents: write
+    steps:
+      - name: Download Firmware Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-epd
+          path: firmware
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: epd-${{ needs.get-version.outputs.version }}
+          name: EPD Release ${{ needs.get-version.outputs.version }}
+          body: Auto-generated E-Paper firmware release from GitHub Actions.
+          files: firmware/*
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
