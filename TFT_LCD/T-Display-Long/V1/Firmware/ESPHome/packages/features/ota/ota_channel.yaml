@@ -1,0 +1,68 @@
+# Stable / Beta OTA channel select (AIR-1 pattern).
+# Uses http_request update against GitHub Pages manifests.
+# Beta URL may 404 until a beta pipeline publishes firmware-beta/manifest.json.
+
+substitutions:
+  ota_stable_manifest: "https://yashmulgaonkar.github.io/halo/firmware/manifest.json"
+  ota_beta_manifest: "https://yashmulgaonkar.github.io/halo/firmware-beta/manifest.json"
+  firmware_channel_default: "Stable"
+
+http_request:
+  verify_ssl: true
+  # GitHub Pages redirects + CSP headers need headroom on ESP32.
+  buffer_size_rx: 5120
+  buffer_size_tx: 2048
+
+# Managed OTA alongside whatever esphome OTA platform the device already has.
+ota:
+  - platform: http_request
+    id: ota_managed
+
+update:
+  - platform: http_request
+    id: update_http_request
+    name: "HALO Firmware"
+    source: ${ota_stable_manifest}
+
+select:
+  - platform: template
+    name: "Firmware Channel"
+    id: firmware_channel
+    icon: mdi:source-branch
+    entity_category: "config"
+    optimistic: true
+    restore_value: true
+    options:
+      - "Stable"
+      - "Beta"
+    initial_option: "${firmware_channel_default}"
+    on_value:
+      then:
+        - script.execute: apply_ota_source
+
+script:
+  - id: apply_ota_source
+    then:
+      - lambda: |-
+          const bool beta = id(firmware_channel).current_option() == "Beta";
+          std::string url = beta ? "${ota_beta_manifest}" : "${ota_stable_manifest}";
+          ESP_LOGI("firmware", "OTA manifest set to: %s", url.c_str());
+          id(update_http_request).set_source_url(url);
+      - component.update: update_http_request
+
+button:
+  - platform: template
+    name: "Check Firmware Update"
+    id: check_firmware_update
+    icon: mdi:cloud-download
+    entity_category: "config"
+    on_press:
+      - script.execute: apply_ota_source
+      - delay: 3s
+      - lambda: "id(update_http_request).perform(true);"
+
+esphome:
+  on_boot:
+    - priority: -100
+      then:
+        - script.execute: apply_ota_source

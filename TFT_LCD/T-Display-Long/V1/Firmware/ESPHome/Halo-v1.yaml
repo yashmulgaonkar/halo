@@ -9,7 +9,8 @@ esphome:
     board_build.f_flash: 80000000L
     board_build.f_cpu: 240000000L
 
-  min_version: 2025.6.2
+  # model: sen55 and related packages require 2026.7.2+
+  min_version: 2026.7.2
 
   project:
     name: "yashmulgaonkar.Halo-v1"
@@ -33,6 +34,25 @@ wifi:
   ap:
     ssid: "Halo Hotspot"
 
+# ============================================================================
+# Package profile — default = full HALO (monolith behavior + community extras)
+# Comment/uncomment feature lines to trim. See PACKAGES.md.
+# ============================================================================
 packages:
-  # Sibling include so CI / branch imports use the Core from the same ref (not hard-coded main).
+  globals: !include packages/base/globals.yaml
+  system_core: !include packages/system/esphome_core.yaml
+
+  # BLE — pick exactly one:
+  ble: !include packages/features/ble/ble_improv.yaml
+  # ble: !include packages/features/ble/ble_stub.yaml
+
+  airq_history: !include packages/features/airq/airq_history.yaml
+  page_rotation: !include packages/features/page_rotation/page_rotation.yaml
+  ota_channel: !include packages/features/ota/ota_channel.yaml
+
+  # Optional (off by default — need secrets / HA entities):
+  # weather: !include packages/features/weather/weather_ha.yaml
+  # wireguard: !include packages/features/wireguard/wireguard.yaml
+
+  # LVGL UI + sensors (monolith core)
   core: !include Halo-v1-Core.yaml

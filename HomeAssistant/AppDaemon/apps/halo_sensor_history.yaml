@@ -1,0 +1,15 @@
+# AppDaemon app entry — copy into your AppDaemon apps.yaml / apps folder.
+# Replace ha_url / ha_token / statistic_id_* with your HALO entities.
+
+halo_sensor_history:
+  module: halo_sensor_history
+  class: HaloSensorHistory
+  ha_url: "http://homeassistant.local:8123"
+  ha_token: !secret ha_token
+  event_type: esphome.aqi_history_batch
+  # Optional: only accept events from this ESPHome name substitution.
+  # device_filter: halo
+  statistic_id: sensor.halo_computed_aqi
+  # Optionally map the rest of the batch keys:
+  # statistic_id_co2: sensor.halo_co2
+  # statistic_id_pm25: sensor.halo_pm_2_5_m_weight_concentration

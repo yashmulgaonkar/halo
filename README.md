@@ -79,6 +79,11 @@ HALO is built with a powerhouse of components designed to sniff out, measure, an
 - **RGB Light Show:** HALO’s RGB LED halo can flash when your air quality is trash. It’s like HALO’s saying, “Get it together, human!”
 - **Self-Calibrating Genius:** Just take HALO outside, and it’ll calibrate itself. HALO loves fresh air, too.
 
+### Calibration & packages
+
+- Sensor calibration (CO₂ ASC, SEN55 heat offsets, fan clean, NowCast): see [`TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/CALIBRATION.md`](TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/CALIBRATION.md)
+- Optional modular packages (BLE stub, offline AQI history, weather, WireGuard): see [`TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/PACKAGES.md`](TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/PACKAGES.md)
+
 ---
 
 ## Troubleshooting? Call the HALO Hotline (AKA, Join Our Discord)

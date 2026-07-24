@@ -1,0 +1,13 @@
+# No-BLE profile: satisfies ble_scanner_switch references without Bluedroid/NimBLE.
+
+switch:
+  - platform: template
+    name: "BLE Scanner (stub)"
+    id: ble_scanner_switch
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: mdi:bluetooth
+    on_turn_on:
+      - logger.log: "BLE stub: scanner ON (no-op)"
+    on_turn_off:
+      - logger.log: "BLE stub: scanner OFF (no-op)"

@@ -8,6 +8,8 @@ esphome:
     board_build.f_flash: 80000000L
     board_build.f_cpu: 240000000L
 
+  min_version: 2026.7.2
+
   project:
     name: "yashmulgaonkar.Halo-v1"
     version: "${version}"
@@ -33,6 +35,12 @@ web_server:
   version: 3
 
 packages:
+  globals: !include packages/base/globals.yaml
+  system_core: !include packages/system/esphome_core.yaml
+  ble: !include packages/features/ble/ble_stub.yaml
+  airq_history: !include packages/features/airq/airq_history.yaml
+  page_rotation: !include packages/features/page_rotation/page_rotation.yaml
+  # Skip http OTA channel in local dev to avoid dual update sources.
   core: !include Halo-v1-Core.yaml
 
 # Add local timezone for development since Docker container not set to local timezone
@@ -40,6 +48,3 @@ time:
   - platform: homeassistant
     id: !extend ha_time
     timezone: "America/Chicago"
-
-# required to disable wifi power save mode
-esp32_improv: !remove

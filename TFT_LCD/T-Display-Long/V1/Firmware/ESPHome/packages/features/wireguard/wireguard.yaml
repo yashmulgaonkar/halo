@@ -1,0 +1,82 @@
+# Optional WireGuard VPN (comment-toggle in Halo-v1.yaml).
+# Requires secrets: wg_address, wg_netmask, wg_prikey, wg_peerport,
+# wg_peerendpt, wg_pubkey, wg_shrdkey, wg_allowed_ips.
+# UI labels from the modular fork are omitted — control via HA entities.
+
+substitutions:
+  wg_peerendpt: !secret wg_peerendpt
+  wg_peerport: !secret wg_peerport
+
+wireguard:
+  id: wg0
+  address: !secret wg_address
+  netmask: !secret wg_netmask
+  private_key: !secret wg_prikey
+  peer_port: !secret wg_peerport
+  peer_endpoint: !secret wg_peerendpt
+  peer_public_key: !secret wg_pubkey
+  peer_preshared_key: !secret wg_shrdkey
+  peer_allowed_ips: !secret wg_allowed_ips
+  peer_persistent_keepalive: 25s
+  require_connection_to_proceed: false
+  reboot_timeout: 0s
+
+switch:
+  - platform: template
+    name: "Enable WireGuard"
+    id: wireguard_enabled
+    icon: mdi:vpn
+    restore_mode: RESTORE_DEFAULT_OFF
+    optimistic: true
+    entity_category: "config"
+    on_turn_on:
+      - delay: 500ms
+      - wireguard.enable:
+          id: wg0
+    on_turn_off:
+      - wireguard.disable:
+          id: wg0
+
+binary_sensor:
+  - platform: wireguard
+    wireguard_id: wg0
+    status:
+      name: "WireGuard Status"
+      id: wireguard_status
+    enabled:
+      name: "WireGuard Enabled"
+      id: wireguard_enabled_sensor
+
+sensor:
+  - platform: wireguard
+    wireguard_id: wg0
+    latest_handshake:
+      name: "WireGuard Latest Handshake"
+      id: wireguard_handshake
+
+text_sensor:
+  - platform: wireguard
+    wireguard_id: wg0
+    address:
+      name: "WireGuard Address"
+      id: wireguard_address_text
+
+esphome:
+  on_boot:
+    - priority: 50
+      then:
+        - delay: 20s
+        - if:
+            condition:
+              lambda: "return id(wireguard_enabled).state;"
+            then:
+              - wait_until:
+                  condition:
+                    lambda: "return id(ha_time).now().is_valid();"
+                  timeout: 2min
+              - if:
+                  condition:
+                    lambda: "return id(ha_time).now().is_valid();"
+                  then:
+                    - wireguard.enable:
+                        id: wg0

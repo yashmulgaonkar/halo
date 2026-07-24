@@ -1,0 +1,20 @@
+# Optional Home Assistant weather sensors (comment-toggle in Halo-v1.yaml).
+# Requires substitutions weather_entity_id (and optionally current_temp_sensor).
+# Does not pull the large modular forecast UI; keep flash-and-go light.
+
+substitutions:
+  weather_entity_id: "weather.home"
+
+sensor:
+  - platform: homeassistant
+    id: ha_weather_temperature
+    entity_id: ${weather_entity_id}
+    attribute: temperature
+    name: "HA Weather Temperature"
+    unit_of_measurement: "°C"
+
+text_sensor:
+  - platform: homeassistant
+    id: ha_weather_state
+    entity_id: ${weather_entity_id}
+    name: "HA Weather Condition"
