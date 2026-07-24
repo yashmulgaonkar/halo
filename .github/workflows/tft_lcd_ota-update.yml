@@ -2,116 +2,95 @@ name: Build and Release Halo TFT LCD Firmware
 
 env:
   DEVICE_NAME: halo
+  CHIP_FAMILY: ESP32-S3
 
 on:
   push:
     paths:
       - 'TFT_LCD/**'
+      - '.github/workflows/tft_lcd_ota-update.yml'
+      - 'static/**'
   workflow_dispatch:
     inputs:
       version:
-        description: 'The version of the firmware to build'
-        required: true
+        description: 'Override version tag (leave empty to use Core.yaml)'
+        required: false
+        default: ''
 
 jobs:
-  create-release:
-    name: Create Release
+  get-version:
+    name: Resolve Version
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'  # Only create a release on push
-    permissions:
-      contents: write  # Ensure permissions for writing to the repo
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4
 
-      - name: Get Version
-        id: get_version
+      - name: Resolve Version
+        id: resolve
         run: |
-          if [ -f "TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1-Core.yaml" ]; then
-            version=$(awk '/substitutions:/ {found=1} found && /version:/ {print $2; exit}' TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1-Core.yaml | tr -d '"')
-            if [ -n "$version" ]; then
-              echo "project_version=$version" >> $GITHUB_ENV
-              echo "Version extracted: $version"
-            else
-              echo "Error: Could not extract version from file"
-              exit 1
-            fi
+          set -euo pipefail
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            version="${{ github.event.inputs.version }}"
           else
-            echo "Error: Core file not found"
+            version=$(awk '/substitutions:/ {found=1} found && /version:/ {print $2; exit}' \
+              TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1-Core.yaml | tr -d '"')
+          fi
+          if [ -z "${version}" ]; then
+            echo "Error: Could not resolve firmware version"
             exit 1
           fi
-
-      - name: Create GitHub Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  # Use PAT for authentication
-        with:
-          tag_name: ${{ env.project_version }}
-          release_name: "Release ${{ env.project_version }}"
-          draft: false
-          prerelease: false
-          body: "Auto-generated release from GitHub Actions."
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: ${version}"
 
   build-firmware:
-    name: Build And Release
-    needs: [create-release, build-site]
+    name: Build Firmware
     runs-on: ubuntu-latest
+    needs: get-version
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4.1.7
-        
+        uses: actions/checkout@v4
+
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-          
+          python-version: '3.11'
+
       - name: Install ESPHome
-        run: |
-          pip install esphome
-          
+        run: pip install esphome
+
       - name: Build Firmware
+        working-directory: TFT_LCD/T-Display-Long/V1/Firmware/ESPHome
         run: |
-          cd TFT_LCD/T-Display-Long/V1/Firmware/ESPHome
+          set -euo pipefail
+          # Halo-v1.yaml !includes Halo-v1-Core.yaml from this checkout (branch/commit under test).
           esphome compile Halo-v1.yaml
-          echo "Build completed. Checking for firmware files..."
-          find .esphome/build -name "*.bin" -type f
-          
-      - name: Debug - Show Build Directory
+          echo "Firmware binaries:"
+          find .esphome -type f -name '*.bin' -print
+
+      - name: Collect Firmware Artifacts
+        working-directory: TFT_LCD/T-Display-Long/V1/Firmware/ESPHome
         run: |
-          cd TFT_LCD/T-Display-Long/V1/Firmware/ESPHome
-          echo "Build directory structure:"
-          ls -la .esphome/ || echo "No .esphome directory found"
-          ls -la .esphome/build/ || echo "No build directory found"
-          if [ -d ".esphome/build" ]; then
-            echo "Build subdirectories:"
-            ls -la .esphome/build/
-            for dir in .esphome/build/*/; do
-              if [ -d "$dir" ]; then
-                echo "Contents of $dir:"
-                ls -la "$dir"
-                if [ -d "$dir.pioenvs" ]; then
-                  echo "Contents of $dir.pioenvs:"
-                  ls -la "$dir.pioenvs"
-                  for pio_dir in "$dir.pioenvs"/*/; do
-                    if [ -d "$pio_dir" ]; then
-                      echo "Contents of $pio_dir:"
-                      ls -la "$pio_dir"
-                    fi
-                  done
-                fi
-              fi
-            done
+          set -euo pipefail
+          mkdir -p artifacts
+          # Prefer ESPHome output layout; fall back to PlatformIO envs.
+          mapfile -t bins < <(find .esphome -type f \( -name 'firmware.factory.bin' -o -name 'firmware.bin' -o -name 'firmware.ota.bin' \) | sort)
+          if [ "${#bins[@]}" -eq 0 ]; then
+            echo "ERROR: No firmware binaries found under .esphome"
+            find .esphome -type f | head -n 200 || true
+            exit 1
           fi
-          
+          for f in "${bins[@]}"; do
+            cp -v "$f" "artifacts/$(basename "$f")"
+          done
+          ls -la artifacts
+
       - name: Upload Firmware Artifact
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v4
         with:
           name: firmware-tft
-          path: |
-            TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/.esphome/build/*/.pioenvs/*/firmware.factory.bin
-            TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/.esphome/build/*/.pioenvs/*/firmware.bin
-            TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/.esphome/build/*/*.bin
-            TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/.esphome/build/*/.pioenvs/*/manifest.json
+          path: TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/artifacts/*
           if-no-files-found: error
 
   build-site:
@@ -119,25 +98,53 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4
 
       - name: Build Site
-        uses: actions/jekyll-build-pages@v1.0.13
+        uses: actions/jekyll-build-pages@v1
         with:
           source: ./static
           destination: ./output
 
       - name: Upload Site Artifact
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v4
         with:
           name: site
           path: output
 
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - get-version
+      - build-firmware
+    permissions:
+      contents: write
+    steps:
+      - name: Download Firmware Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-tft
+          path: firmware
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.get-version.outputs.version }}
+          name: Release ${{ needs.get-version.outputs.version }}
+          body: Auto-generated TFT LCD firmware release from GitHub Actions.
+          files: firmware/*
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish:
     name: Publish to GitHub Pages
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
+      - get-version
       - build-firmware
       - build-site
     permissions:
@@ -148,109 +155,73 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Download Firmware Artifact
-        uses: actions/download-artifact@v4.1.8
+        uses: actions/download-artifact@v4
         with:
           name: firmware-tft
-          path: firmware
-
-      - name: Check Firmware Artifacts
-        run: |
-          echo "Checking firmware artifacts..."
-          ls -la firmware/ || echo "No firmware directory found"
-          if [ -d "firmware" ]; then
-            echo "Firmware files found:"
-            find firmware -type f
-          else
-            echo "No firmware artifacts downloaded"
-            exit 1
-          fi
-
-      - name: Copy Firmware and Manifest
-        run: |-
-          mkdir -p output/firmware
-          cp -r firmware/* output/firmware/
+          path: output/firmware
 
       - name: Download Site Artifact
-        uses: actions/download-artifact@v4.1.8
+        uses: actions/download-artifact@v4
         with:
           name: site
           path: output
 
-      # ------------------- ADDED: Generate manifest.json if missing -------------------
-      - name: Generate Firmware Manifest (ensure bin paths are set)
+      - name: Generate Firmware Manifest
         working-directory: output/firmware
         env:
-          VERSION: ${{ env.project_version }}
+          VERSION: ${{ needs.get-version.outputs.version }}
           DEVICE: ${{ env.DEVICE_NAME }}
-          CHIP_FAMILY: ESP32-S3   # change if needed (ESP32, ESP32-S2, ESP32-C3, ESP8266)
+          CHIP_FAMILY: ${{ env.CHIP_FAMILY }}
         run: |
           set -euo pipefail
 
-          # If a manifest already exists, keep it as-is.
-          if [ -f "manifest.json" ]; then
-            echo "manifest.json already exists. Leaving it untouched."
-            exit 0
-          fi
+          echo "Firmware tree:"
+          find . -type f -print | sed 's|^\./||'
 
-          echo "Looking for firmware files in: $(pwd)"
-          echo "Tree:"
-          find . -maxdepth 3 -type f -print | sed 's|^\./||'
-
-          # Prefer factory -> any non-OTA bin
           FACTORY="$(find . -type f -name '*.factory.bin' | head -n1 || true)"
           if [ -z "${FACTORY}" ]; then
-            # Fall back to any .bin that is not explicitly an OTA file
             FACTORY="$(find . -type f -name '*.bin' ! -name '*.ota.bin' | head -n1 || true)"
           fi
 
-          # OTA preference: *.ota.bin, then a plain firmware.bin
           OTA="$(find . -type f -name '*.ota.bin' | head -n1 || true)"
           if [ -z "${OTA}" ]; then
             OTA="$(find . -type f -name 'firmware.bin' | head -n1 || true)"
           fi
 
-          # Must have *some* factory image to flash via 'parts'
           if [ -z "${FACTORY}" ]; then
-            echo "ERROR: No factory (or fallback) .bin found to reference in manifest."
+            echo "ERROR: No factory (or fallback) .bin found for manifest."
+            exit 1
+          fi
+          if [ -z "${VERSION}" ]; then
+            echo "ERROR: VERSION is empty; refuse to publish blank manifest version."
             exit 1
           fi
 
-          # Normalize to relative paths without ./ prefix
           FACTORY_REL="${FACTORY#./}"
           OTA_REL="${OTA#./}"
-
-          # Compute MD5 for OTA if present
           OTA_MD5=""
           if [ -n "${OTA}" ] && [ -f "${OTA}" ]; then
             OTA_MD5="$(md5sum "${OTA}" | awk '{print $1}')"
           fi
 
-          echo "Selected FACTORY: ${FACTORY_REL}"
-          if [ -n "${OTA_REL}" ]; then
-            echo "Selected OTA: ${OTA_REL} (md5: ${OTA_MD5})"
-          else
-            echo "No OTA image found; manifest will omit 'ota' block."
-          fi
-
-          # Build manifest.json (ESP Web Tools schema)
           {
             echo '{'
-            echo '  "name": "'${DEVICE}'.TFT-LCD",'
-            echo '  "version": "'${VERSION}'",'
+            echo '  "name": "'"${DEVICE}"'.TFT-LCD",'
+            echo '  "version": "'"${VERSION}"'",'
             echo '  "home_assistant_domain": "esphome",'
             echo '  "new_install_prompt_erase": false,'
             echo '  "builds": ['
             echo '    {'
-            echo '      "chipFamily": "'${CHIP_FAMILY}'",'
+            echo '      "chipFamily": "'"${CHIP_FAMILY}"'",'
             if [ -n "${OTA_REL}" ]; then
               echo '      "ota": {'
-              echo '        "path": "'${OTA_REL}'",'
-              [ -n "${OTA_MD5}" ] && echo '        "md5": "'${OTA_MD5}'",'
+              echo '        "path": "'"${OTA_REL}"'",'
+              [ -n "${OTA_MD5}" ] && echo '        "md5": "'"${OTA_MD5}"'",'
               echo '        "summary": ""'
               echo '      },'
             fi
             echo '      "parts": ['
-            echo '        { "path": "'${FACTORY_REL}'", "offset": 0 }'
+            echo '        { "path": "'"${FACTORY_REL}"'", "offset": 0 }'
             echo '      ]'
             echo '    }'
             echo '  ]'
@@ -260,18 +231,15 @@ jobs:
           echo "Generated manifest.json:"
           cat manifest.json
 
-
-      # -------------------------------------------------------------------------------
-
       - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3.0.1
+        uses: actions/upload-pages-artifact@v3
         with:
           path: output
           retention-days: 1
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5.0.0
+        uses: actions/configure-pages@v5
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4.0.5
+        uses: actions/deploy-pages@v4

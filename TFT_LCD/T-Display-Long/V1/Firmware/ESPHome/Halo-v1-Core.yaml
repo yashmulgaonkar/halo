@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "26.1.9.2"
+  version: "26.7.23.1"
   device_description: ${name} - v${version}.
 
 psram:
@@ -986,7 +986,8 @@ lvgl:
     - lily_display
   touchscreens:
     - lily_touch
-  buffer_size: 100%
+  # Full buffer + QSPI/PSRAM pressure correlated with blank panel after hours; 50% reduces flush load.
+  buffer_size: 50%
   pages:            
     - id: main_page
       bg_color: my_black

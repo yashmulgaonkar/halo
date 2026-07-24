@@ -32,9 +32,5 @@ wifi:
     ssid: "Halo Hotspot"
 
 packages:
-  remote_package:
-    url: https://github.com/yashmulgaonkar/halo/
-    ref: main
-    files:
-      - E-Paper/Waveshare_BWR/V1/Firmware/ESPHome/Halo_EPD-Core.yaml
-    refresh: 0d
+  # Sibling include so CI / branch imports use the Core from the same ref (not hard-coded main).
+  core: !include Halo_EPD-Core.yaml
