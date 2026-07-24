@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "26.7.23.3"
+  version: "26.7.23.4"
   device_description: ${name} - v${version}.
 
 psram:
@@ -944,33 +944,13 @@ text_sensor:
         return std::string("Extremely abnormal");}    
 
 light:
-  # - platform: esp32_rmt_led_strip
-  #   id: rgb_light
-  #   name: "Halo"
-  #   pin: GPIO47
-  #   rgb_order: GRB
-  #   default_transition_length: 2s
-  #   chipset: SK6812
-  #   num_leds: 11
-  #   effects:
-  #     - pulse:
-  #         name: "Slow Pulse" 
-  #         transition_length: 500ms
-  #         update_interval: 500ms
-  #         min_brightness: 10%
-  #         max_brightness: 50%
-  #     - addressable_rainbow:
-  #         name: Rainbow Effect With Custom Values
-  #         speed: 10
-  #         width: 50
-
-  - platform: esp32_rmt_led_strip
-    name: Halo
-    id: rgb_light
-    rgb_order: GRB
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2812
     pin: GPIO47
     num_leds: 12
-    chipset: WS2812
+    name: Halo
+    id: rgb_light
     restore_mode: RESTORE_AND_OFF
     effects:
       - addressable_rainbow:
