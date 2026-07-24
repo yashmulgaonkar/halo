@@ -152,6 +152,7 @@ script:
             data["total"] = std::to_string(count);
             data["batch"] = std::to_string(batch_index);
             data["readings"] = json;
+            // Requires api.homeassistant_services: true (USE_API_HOMEASSISTANT_SERVICES).
             {
               esphome::api::HomeassistantActionRequest req;
               req.service = esphome::StringRef("esphome.aqi_history_batch");
