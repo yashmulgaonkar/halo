@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "26.7.24.1"
+  version: "26.7.24.2"
   device_description: ${name} - v${version}.
 
 psram:
@@ -22,13 +22,9 @@ esp32:
 esp32_improv:
   authorizer: none
 
-external_components:
-  - source: github://yashmulgaonkar/esphome-components
-    components: [axs15231, sy6970]
-
-  # esp32_rmt_led_strip is built into modern ESPHome; do not pull the old
-  # github://pr#7770 override (it breaks with "Platform not found").
-
+# axs15231 touch is built into ESPHome; do not override with the external
+# fork (its I2C write(..., stop) API breaks on 2026.7+).
+# sy6970 remains available via github://yashmulgaonkar/esphome-components if needed.
 
 spi:
   id: lily_spi
