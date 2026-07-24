@@ -140,6 +140,8 @@ interval:
             - lambda: 'id(cycleCounter) += 1;'              
 
 api:
+  # Required for airq_history flush (HomeassistantActionRequest / send_homeassistant_action).
+  homeassistant_services: true
   on_client_connected:
       - delay: 1s
       - light.turn_off: rgb_light
