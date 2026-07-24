@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "26.7.23.6"
+  version: "26.7.24.1"
   device_description: ${name} - v${version}.
 
 psram:
@@ -119,7 +119,7 @@ interval:
           then:
             - light.turn_on:
                 id: rgb_light
-                effect: "Rainbow Effect With Custom Values"
+                effect: "Addressable Rainbow"
             - lambda: 'id(cycleCounter) += 1;'
 
   - interval: 1s
