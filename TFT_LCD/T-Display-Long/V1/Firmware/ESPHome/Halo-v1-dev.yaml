@@ -22,10 +22,7 @@ ota:
   - platform: esphome
 
 wifi:
-  # Disable power save more for compatibility with some Ubiquiti networks.
   power_save_mode: none
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "Halo Hotspot"
 
@@ -33,6 +30,11 @@ improv_serial:
 
 web_server:
   version: 3
+
+substitutions:
+  # Local checkout: use sibling !includes so compile does not need GitHub.
+  # (Halo-v1.yaml uses remote_packages for HA adopters.)
+  version: "dev"
 
 packages:
   globals: !include packages/base/globals.yaml
@@ -43,7 +45,6 @@ packages:
   # Skip http OTA channel in local dev to avoid dual update sources.
   core: !include Halo-v1-Core.yaml
 
-# Add local timezone for development since Docker container not set to local timezone
 time:
   - platform: homeassistant
     id: !extend ha_time

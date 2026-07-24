@@ -35,8 +35,12 @@ wifi:
     ssid: "Halo Hotspot"
 
 # ============================================================================
-# Package profile — default = full HALO (monolith behavior + community extras)
-# Comment/uncomment feature lines to trim. See PACKAGES.md.
+# Package profile — default = full HALO
+#
+# Local/CI: sibling !include (this file).
+# HA dashboard: see PACKAGES.md — list each package file ONCE.
+# Never list both Halo-v1.yaml and Halo-v1-Core.yaml in the same remote
+# files: list (duplicates Core → "Startup Light Blink" conflict).
 # ============================================================================
 packages:
   globals: !include packages/base/globals.yaml
@@ -50,9 +54,8 @@ packages:
   page_rotation: !include packages/features/page_rotation/page_rotation.yaml
   ota_channel: !include packages/features/ota/ota_channel.yaml
 
-  # Optional (off by default — need secrets / HA entities):
+  # Optional (off by default):
   # weather: !include packages/features/weather/weather_ha.yaml
   # wireguard: !include packages/features/wireguard/wireguard.yaml
 
-  # LVGL UI + sensors (monolith core)
   core: !include Halo-v1-Core.yaml
