@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "26.7.24.2"
+  version: "26.7.24.3"
   device_description: ${name} - v${version}.
 
 psram:
@@ -754,14 +754,15 @@ sensor:
         then:
           - if:
               condition:
-                lambda: "return temp_unit_changed;"
+                lambda: "return id(temp_unit_changed);"
               then:
                 - lvgl.label.update:
                     id: temperature_units
                     text: !lambda |-
-                      if(id(display_temperature_unit).state == "Fahrenheit")
+                      const char *unit = id(display_temperature_unit).current_option();
+                      if (strcmp(unit, "Fahrenheit") == 0)
                         return "\u00B0F";
-                      else if(id(display_temperature_unit).state == "Kelvin")
+                      else if (strcmp(unit, "Kelvin") == 0)
                         return "K";
                       return "\u00B0C";
                 - globals.set:
@@ -771,9 +772,10 @@ sensor:
               id: temperature_value
               text: !lambda |-
                 static char buffer[10];
-                if(id(display_temperature_unit).state == "Fahrenheit")
+                const char *unit = id(display_temperature_unit).current_option();
+                if (strcmp(unit, "Fahrenheit") == 0)
                   snprintf(buffer, sizeof(buffer), "%.01f", (x * 9.0 / 5.0) + 32.0);
-                else if(id(display_temperature_unit).state == "Kelvin")
+                else if (strcmp(unit, "Kelvin") == 0)
                   snprintf(buffer, sizeof(buffer), "%.01f", x + 273.15);
                 else
                   snprintf(buffer, sizeof(buffer), "%.01f", x);
