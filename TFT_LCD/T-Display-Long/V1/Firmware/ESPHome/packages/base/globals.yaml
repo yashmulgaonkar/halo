@@ -1,0 +1,26 @@
+# Shared globals used by feature packages (history, page rotation, OTA helpers).
+
+globals:
+  - id: boot_complete
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: ota_in_progress
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: page_rotation_AirQ_enabled
+    type: bool
+    restore_value: yes
+    initial_value: "true"
+  - id: page_rotation_AirQ_order
+    type: int
+    restore_value: yes
+    initial_value: "1"
+
+esphome:
+  on_boot:
+    - priority: -100
+      then:
+        - delay: 5s
+        - lambda: 'id(boot_complete) = true;'

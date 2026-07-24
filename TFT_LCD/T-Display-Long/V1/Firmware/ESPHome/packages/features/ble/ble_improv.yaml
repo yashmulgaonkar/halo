@@ -1,0 +1,18 @@
+# Default BLE package: ESPHome native Improv WiFi provisioning.
+# Swap for ble_stub.yaml in Halo-v1.yaml to save ~40KB when BLE is not needed.
+
+esp32_improv:
+  authorizer: none
+
+switch:
+  - platform: template
+    name: "BLE Scanner"
+    id: ble_scanner_switch
+    icon: mdi:bluetooth
+    entity_category: "config"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - logger.log: "BLE scanner ON (improv profile — enable bluetooth_proxy in a local override if needed)"
+    on_turn_off:
+      - logger.log: "BLE scanner OFF"
