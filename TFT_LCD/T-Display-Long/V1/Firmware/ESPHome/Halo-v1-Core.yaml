@@ -680,6 +680,13 @@ sensor:
 
   - platform: sen5x
     id: sen55
+    # Some modules misreport as SEN54 and drop NOx; force SEN55 (ESPHome 2026.7.2+).
+    model: sen55
+    i2c_id: lily_i2c
+    address: 0x69
+    update_interval: 10s
+    # store_baseline defaults to true; acceleration_mode defaults to low (RH/T).
+    # Do not nest those under voc/nox — they are platform-level only.
     pm_1_0:
       name: "PM <1µm Weight concentration"
       id: pm_1_0
@@ -946,14 +953,6 @@ sensor:
     nox:
       name: "SEN55 NOX"
       id: sen55_nox
-    # Some modules misreport as SEN54 and drop NOx; force SEN55 (ESPHome 2026.7.2+).
-    model: sen55
-    # Platform-level options (not under nox/voc): VOC+NOx baseline NVS + RH/T accel.
-    store_baseline: true
-    acceleration_mode: low
-    i2c_id: lily_i2c
-    address: 0x69
-    update_interval: 10s    
 
 button:
   - platform: restart
