@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "26.7.23.4"
+  version: "26.7.23.5"
   device_description: ${name} - v${version}.
 
 psram:
@@ -208,8 +208,8 @@ web_server:
   port: 80
 
 image:
-  - platform: file
-    file: https://yashmulgaonkar.github.io/assets/YM.png
+  # Legacy format — required until ESPHome 2027.1 (platform: file is not valid on 2026.6.x).
+  - file: https://yashmulgaonkar.github.io/assets/YM.png
     id: ym_logo
     resize: 25x25
     type: RGB565
