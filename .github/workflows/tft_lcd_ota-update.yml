@@ -58,7 +58,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install ESPHome
-        run: pip install esphome
+        run: pip install "esphome==2026.7.2"
 
       - name: Build Firmware
         working-directory: TFT_LCD/T-Display-Long/V1/Firmware/ESPHome
