@@ -1003,10 +1003,17 @@ light:
     pin: GPIO47
     num_leds: 12
     chipset: WS2812
+    # Avoid PSRAM/QSPI contention that causes rainbow flicker on T-Display-S3-Long.
+    use_psram: false
+    use_dma: true
+    rmt_symbols: 192
+    max_refresh_rate: 16ms
     restore_mode: RESTORE_AND_OFF
     effects:
       - addressable_rainbow:
           name: Addressable Rainbow
+          speed: 10
+          width: 50
 
   - platform: monochromatic
     output: backlight
