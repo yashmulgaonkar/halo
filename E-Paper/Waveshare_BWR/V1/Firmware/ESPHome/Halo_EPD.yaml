@@ -19,9 +19,8 @@ dashboard_import:
   package_import_url: github://yashmulgaonkar/halo/E-Paper/Waveshare_BWR/V1/Firmware/ESPHome/Halo_EPD.yaml@main
   import_full_config: true
 
-ota:
-  - platform: esphome
-    id: ota_default
+# OTA is intentionally omitted here: ESPHome device YAMLs already define
+# `ota` with id: ota_default. Re-declaring it causes "ID ota_default redefined".
 
 wifi:
   on_connect:
