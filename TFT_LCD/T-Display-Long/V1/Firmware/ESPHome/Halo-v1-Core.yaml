@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "26.7.23.5"
+  version: "26.7.23.6"
   device_description: ${name} - v${version}.
 
 psram:
@@ -208,8 +208,8 @@ web_server:
   port: 80
 
 image:
-  # Legacy format — required until ESPHome 2027.1 (platform: file is not valid on 2026.6.x).
-  - file: https://yashmulgaonkar.github.io/assets/YM.png
+  - platform: file
+    file: https://yashmulgaonkar.github.io/assets/YM.png
     id: ym_logo
     resize: 25x25
     type: RGB565
@@ -944,13 +944,14 @@ text_sensor:
         return std::string("Extremely abnormal");}    
 
 light:
-  - platform: neopixelbus
-    type: GRB
-    variant: WS2812
-    pin: GPIO47
-    num_leds: 12
+  # esp-idf requires esp32_rmt_led_strip (neopixelbus is Arduino-only).
+  - platform: esp32_rmt_led_strip
     name: Halo
     id: rgb_light
+    rgb_order: GRB
+    pin: GPIO47
+    num_leds: 12
+    chipset: WS2812
     restore_mode: RESTORE_AND_OFF
     effects:
       - addressable_rainbow:
