@@ -1045,29 +1045,21 @@ text_sensor:
     entity_category: diagnostic
 
 light:
-  # Halo ring: Adafruit #4892 / OPSCO SK68XX-EC3210F side-fire pixels
-  # (https://cdn-shop.adafruit.com/product-files/4892/4892_SK68XX-EC3210F__REV.A.pdf)
-  # Datasheet: T0H=0.3µs, T1H=0.9µs, period 1.2µs, reset >200µs, GRB order.
-  # Solid color: set Effect to "None" and use the HA color picker.
-  # esp-idf requires esp32_rmt_led_strip (neopixelbus is Arduino-only).
+  # Halo ring: Adafruit #4892 / OPSCO SK68XX-EC3210F (NEO_GRB + NEO_KHZ800).
+  # Proven-good params from Adafruit_NeoPixel test on this hardware: pin 47, 11 LEDs.
+  # Flicker under ESPHome is usually QSPI display contention, not wiring — keep
+  # use_psram/use_dma off and cap refresh while LVGL is active.
+  # Solid color: Effect = "None" + HA color picker.
   - platform: esp32_rmt_led_strip
     name: Halo
     id: rgb_light
     rgb_order: GRB
     pin: GPIO47
-    num_leds: 5
-    # Exact SK68XX timings (chipset presets can be slightly off and corrupt bits
-    # when the AMOLED QSPI bus is busy → random rainbow colors).
-    bit0_high: 300ns
-    bit0_low: 900ns
-    bit1_high: 900ns
-    bit1_low: 300ns
-    reset_low: 280us
-    # Internal RAM only; DMA off — DMA + QSPI display traffic still glitches RMT.
+    num_leds: 11
+    chipset: WS2812
     use_psram: false
     use_dma: false
     rmt_symbols: 192
-    # Cap updates ~30 Hz so LVGL flushes don't preempt mid-frame.
     max_refresh_rate: 33ms
     restore_mode: RESTORE_AND_OFF
     # HA often turns RGB lights on as pure blue when no prior color is known.
@@ -1099,7 +1091,7 @@ light:
       - addressable_rainbow:
           name: Addressable Rainbow
           speed: 5
-          width: 12
+          width: 11
       - addressable_scan:
           name: Scan
           move_interval: 80ms
@@ -1118,15 +1110,15 @@ light:
             - red: 100%
               green: 0%
               blue: 0%
-              num_leds: 12
+              num_leds: 11
             - red: 0%
               green: 100%
               blue: 0%
-              num_leds: 12
+              num_leds: 11
             - red: 0%
               green: 0%
               blue: 100%
-              num_leds: 12
+              num_leds: 11
           add_led_interval: 60ms
           reverse: false
 
