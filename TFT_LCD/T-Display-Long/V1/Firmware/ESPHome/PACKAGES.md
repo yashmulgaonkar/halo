@@ -50,6 +50,13 @@ Do **not** add `Halo-v1.yaml` to that `files:` list.
 [`Halo-v1.yaml`](Halo-v1.yaml) and [`Halo-v1-dev.yaml`](Halo-v1-dev.yaml) use
 sibling `!include`s from this directory.
 
+### Temporary NeoPixel-only test
+
+[`Halo-v1-led-test.yaml`](Halo-v1-led-test.yaml) — **no display / sensors / LVGL**.
+Flash over USB to verify GPIO47 × 11 LEDs under ESPHome (Adafruit sketch parity).
+On boot it runs rainbow; join AP `Halo-LED-Test` / `halotest1` or use HA after
+adopt. When done, flash full `Halo-v1.yaml` again.
+
 ```
 packages/
   base/globals.yaml
