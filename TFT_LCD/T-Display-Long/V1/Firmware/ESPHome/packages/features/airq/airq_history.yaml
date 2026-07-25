@@ -1,0 +1,265 @@
+# Offline AQI history buffer (PSRAM ring). Flush on HA reconnect via
+# script flush_aqi_history (wired from Halo-v1-Core api.on_client_connected).
+# Adapted from community modular work; HALO uses ha_time (not SNTP).
+
+globals:
+  - id: aqi_history_values
+    type: float*
+    restore_value: no
+    initial_value: "nullptr"
+  - id: aqi_history_timestamps
+    type: uint32_t*
+    restore_value: no
+    initial_value: "nullptr"
+  - id: aqi_history_buf_size
+    type: uint16_t
+    restore_value: no
+    initial_value: "0"
+  - id: aqi_history_head
+    type: uint16_t
+    restore_value: no
+    initial_value: "0"
+  - id: aqi_history_count
+    type: uint16_t
+    restore_value: no
+    initial_value: "0"
+  - id: aqi_history_last_epoch
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: aqi_history_last_epoch_millis
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+switch:
+  - platform: template
+    name: "AQI History: Enable Buffering"
+    id: aqi_history_enabled
+    icon: mdi:database-clock-outline
+    entity_category: "config"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+number:
+  - platform: template
+    name: "AQI History: Sample Interval (s)"
+    id: aqi_history_sample_interval
+    entity_category: "config"
+    min_value: 30
+    max_value: 1800
+    step: 30
+    initial_value: 60
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "s"
+    mode: box
+  - platform: template
+    name: "AQI History: Max Coverage (days)"
+    id: aqi_history_max_days
+    entity_category: "config"
+    min_value: 0.5
+    max_value: 7
+    step: 0.5
+    initial_value: 3
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "days"
+    mode: box
+
+sensor:
+  - platform: template
+    name: "AQI History: Buffer Fill"
+    id: aqi_history_fill_pct
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    entity_category: "diagnostic"
+    icon: mdi:database-arrow-up-outline
+    update_interval: never
+    lambda: |-
+      if (!id(boot_complete)) return 0.0f;
+      if (id(aqi_history_buf_size) == 0) return 0.0f;
+      return (float)id(aqi_history_count) / id(aqi_history_buf_size) * 100.0f;
+  - platform: template
+    name: "AQI History: Buffered Entries"
+    id: aqi_history_buffered_count
+    unit_of_measurement: "entries"
+    accuracy_decimals: 0
+    entity_category: "diagnostic"
+    icon: mdi:counter
+    update_interval: never
+    lambda: "return (float)id(aqi_history_count);"
+
+script:
+  - id: flush_aqi_history
+    mode: single
+    then:
+      - lambda: |-
+          const uint16_t BATCH_SIZE = 200;
+          const uint8_t NS = 15;
+          uint16_t BUF_SIZE = id(aqi_history_buf_size);
+          uint16_t count = id(aqi_history_count);
+
+          if (count == 0 || !id(aqi_history_enabled).state) {
+            ESP_LOGI("aqi_history", "Nothing to flush (count=%u enabled=%d)", count, id(aqi_history_enabled).state);
+            return;
+          }
+          if (BUF_SIZE == 0 || id(aqi_history_values) == nullptr || id(aqi_history_timestamps) == nullptr) {
+            ESP_LOGE("aqi_history", "PSRAM buffer not allocated – cannot flush.");
+            return;
+          }
+
+          auto *api_server = esphome::api::global_api_server;
+          if (!api_server || !api_server->is_connected()) {
+            ESP_LOGW("aqi_history", "API not connected – preserving buffer.");
+            return;
+          }
+
+          ESP_LOGI("aqi_history", "Flushing %u buffered entries…", count);
+          uint16_t start = (count < BUF_SIZE) ? 0 : id(aqi_history_head);
+          uint16_t batch_index = 0;
+          uint16_t sent = 0;
+
+          while (sent < count) {
+            uint16_t batch_count = (count - sent < BATCH_SIZE) ? (count - sent) : BATCH_SIZE;
+            std::string json;
+            json.reserve((size_t)batch_count * 165 + 4);
+            json += '[';
+
+            for (uint16_t i = 0; i < batch_count; i++) {
+              uint16_t idx = (start + sent + i) % BUF_SIZE;
+              uint32_t ts = id(aqi_history_timestamps)[idx];
+              const float *vs = id(aqi_history_values) + (size_t)idx * NS;
+              auto vf = [](float v) -> float { return std::isnan(v) ? 0.0f : v; };
+              char entry[240];
+              snprintf(entry, sizeof(entry),
+                "{\"ts\":%lu,\"q\":%.0f,\"c2\":%.0f,\"n2\":%.2f,\"co\":%.2f,\"h2\":%.2f,"
+                "\"c4\":%.2f,\"et\":%.2f,\"n3\":%.2f,\"p1\":%.1f,\"p25\":%.1f,\"p4\":%.1f,\"p10\":%.1f,"
+                "\"tm\":%.1f,\"vc\":%.0f,\"rh\":%.0f}",
+                (unsigned long)ts,
+                vf(vs[0]), vf(vs[1]), vf(vs[2]), vf(vs[3]), vf(vs[4]),
+                vf(vs[5]), vf(vs[6]), vf(vs[7]), vf(vs[8]), vf(vs[9]), vf(vs[10]), vf(vs[11]),
+                vf(vs[12]), vf(vs[13]), vf(vs[14]));
+              json += entry;
+              if (i < batch_count - 1) json += ',';
+              App.feed_wdt();
+            }
+            json += ']';
+
+            std::map<std::string, std::string> data;
+            data["device"] = "${name}";
+            data["count"] = std::to_string(batch_count);
+            data["total"] = std::to_string(count);
+            data["batch"] = std::to_string(batch_index);
+            data["readings"] = json;
+            // Requires api.homeassistant_services: true (USE_API_HOMEASSISTANT_SERVICES).
+            {
+              esphome::api::HomeassistantActionRequest req;
+              req.service = esphome::StringRef("esphome.aqi_history_batch");
+              req.is_event = true;
+              req.data.init(data.size());
+              for (auto &it : data) {
+                auto &kv = req.data.emplace_back();
+                kv.key = esphome::StringRef(it.first);
+                kv.value = esphome::StringRef(it.second);
+              }
+              api_server->send_homeassistant_action(req);
+            }
+
+            sent += batch_count;
+            batch_index += 1;
+            App.feed_wdt();
+          }
+
+          id(aqi_history_head) = 0;
+          id(aqi_history_count) = 0;
+          ESP_LOGI("aqi_history", "Flush complete; ring buffer cleared.");
+
+interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+          if (!id(aqi_history_enabled).state) return;
+          if (id(ink_ha_connected).state) return;
+
+          static uint32_t last_sample_ms = 0;
+          uint32_t now_ms = millis();
+          uint32_t interval_ms = (uint32_t)(id(aqi_history_sample_interval).state * 1000.0f);
+          if ((now_ms - last_sample_ms) < interval_ms) return;
+
+          float aqi = id(computed_halo_aqi).state;
+          if (std::isnan(aqi)) return;
+
+          uint32_t sample_ts = 0;
+          {
+            auto t = id(ha_time).now();
+            if (t.is_valid()) {
+              sample_ts = (uint32_t)t.timestamp;
+              id(aqi_history_last_epoch) = sample_ts;
+              id(aqi_history_last_epoch_millis) = now_ms;
+            } else if (id(aqi_history_last_epoch) != 0) {
+              sample_ts = id(aqi_history_last_epoch) + (now_ms - id(aqi_history_last_epoch_millis)) / 1000;
+            } else {
+              return;
+            }
+          }
+
+          uint16_t needed_size = (uint16_t)(
+            id(aqi_history_max_days).state * 86400.0f / id(aqi_history_sample_interval).state
+          );
+          if (needed_size < 60) needed_size = 60;
+          if (needed_size > 20160) needed_size = 20160;
+
+          if (id(aqi_history_buf_size) != needed_size) {
+            if (id(aqi_history_values) != nullptr) {
+              heap_caps_free(id(aqi_history_values));
+              id(aqi_history_values) = nullptr;
+            }
+            if (id(aqi_history_timestamps) != nullptr) {
+              heap_caps_free(id(aqi_history_timestamps));
+              id(aqi_history_timestamps) = nullptr;
+            }
+            id(aqi_history_head) = 0;
+            id(aqi_history_count) = 0;
+            id(aqi_history_buf_size) = 0;
+          }
+
+          const uint16_t BUF_SIZE = needed_size;
+          const uint8_t NS = 15;
+
+          if (id(aqi_history_values) == nullptr) {
+            id(aqi_history_values) = (float*)heap_caps_malloc((size_t)BUF_SIZE * NS * sizeof(float), MALLOC_CAP_SPIRAM);
+            if (id(aqi_history_values) == nullptr) return;
+          }
+          if (id(aqi_history_timestamps) == nullptr) {
+            id(aqi_history_timestamps) = (uint32_t*)heap_caps_malloc(BUF_SIZE * sizeof(uint32_t), MALLOC_CAP_SPIRAM);
+            if (id(aqi_history_timestamps) == nullptr) {
+              heap_caps_free(id(aqi_history_values));
+              id(aqi_history_values) = nullptr;
+              return;
+            }
+            id(aqi_history_buf_size) = BUF_SIZE;
+          }
+
+          uint16_t head = id(aqi_history_head);
+          float *vs = id(aqi_history_values) + (size_t)head * NS;
+          auto safe = [](float v) -> float { return std::isnan(v) ? 0.0f : v; };
+          vs[0] = aqi;
+          vs[1] = safe(id(co2).state);
+          vs[2] = safe(id(no2).state);
+          vs[3] = safe(id(co).state);
+          vs[4] = safe(id(h2).state);
+          vs[5] = safe(id(ch4).state);
+          vs[6] = safe(id(ethanol).state);
+          vs[7] = safe(id(nh3).state);
+          vs[8] = safe(id(pm_1_0).state);
+          vs[9] = safe(id(pm_2_5).state);
+          vs[10] = safe(id(pm_4_0).state);
+          vs[11] = safe(id(pm_10_0).state);
+          vs[12] = safe(id(sen55_temperature).state);
+          vs[13] = safe(id(sen55_voc).state);
+          vs[14] = safe(id(sen55_humidity).state);
+          id(aqi_history_timestamps)[head] = sample_ts;
+          id(aqi_history_head) = (head + 1) % BUF_SIZE;
+          if (id(aqi_history_count) < BUF_SIZE) id(aqi_history_count)++;
+          last_sample_ms = now_ms;

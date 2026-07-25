@@ -1,0 +1,100 @@
+# Page rotation controls for multi-page UX.
+# Stock HALO currently has main_page (AirQ). Controls are HA-ready for
+# additional pages (clock/weather/wifi) as they are added.
+
+globals:
+  - id: current_page_name
+    type: std::string
+    restore_value: no
+    initial_value: '"airq"'
+  - id: auto_page_rotation_enabled
+    type: bool
+    restore_value: yes
+    initial_value: "false"
+  - id: auto_page_rotation_interval
+    type: int
+    restore_value: yes
+    initial_value: "30"
+  - id: last_auto_rotation_time
+    type: unsigned long
+    restore_value: no
+    initial_value: "0"
+  - id: last_touch_time
+    type: unsigned long
+    restore_value: no
+    initial_value: "0"
+
+number:
+  - platform: template
+    name: "Auto Page Rotation Interval"
+    id: page_rotation_interval
+    icon: mdi:timer
+    restore_value: true
+    initial_value: 30
+    min_value: 5
+    max_value: 300
+    entity_category: "config"
+    unit_of_measurement: "s"
+    optimistic: true
+    step: 1
+    mode: box
+    on_value:
+      - lambda: "id(auto_page_rotation_interval) = (int)x;"
+  - platform: template
+    name: "Page Order: AirQ Page"
+    id: page_order_AirQ
+    icon: mdi:numeric
+    restore_value: true
+    initial_value: 1
+    min_value: 1
+    max_value: 8
+    entity_category: "config"
+    optimistic: true
+    step: 1
+    mode: box
+    on_value:
+      - lambda: "id(page_rotation_AirQ_order) = (int)x;"
+
+switch:
+  - platform: template
+    name: "Auto Page Rotation"
+    id: auto_page_rotation_switch
+    icon: mdi:rotate-3d-variant
+    restore_mode: RESTORE_DEFAULT_OFF
+    optimistic: true
+    entity_category: "config"
+    on_turn_on:
+      - lambda: |-
+          id(auto_page_rotation_enabled) = true;
+          id(last_auto_rotation_time) = millis();
+    on_turn_off:
+      - lambda: "id(auto_page_rotation_enabled) = false;"
+  - platform: template
+    name: "Page Rotation: AirQ Page"
+    id: page_rotation_AirQ_switch
+    icon: mdi:view-dashboard
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+    entity_category: "config"
+    on_turn_on:
+      - lambda: "id(page_rotation_AirQ_enabled) = true;"
+    on_turn_off:
+      - lambda: "id(page_rotation_AirQ_enabled) = false;"
+
+interval:
+  # With a single LVGL page this is a no-op placeholder that keeps the
+  # rotation timer warm for future multi-page packages.
+  - interval: 1s
+    then:
+      - lambda: |-
+          if (!id(boot_complete) || !id(auto_page_rotation_enabled)) return;
+          if (!id(page_rotation_AirQ_enabled)) return;
+          unsigned long now = millis();
+          unsigned long interval_ms = (unsigned long)id(auto_page_rotation_interval) * 1000UL;
+          if ((now - id(last_auto_rotation_time)) < interval_ms) return;
+          id(last_auto_rotation_time) = now;
+          id(current_page_name) = "airq";
+          lv_obj_t *scr = lv_scr_act();
+          if (scr != NULL) {
+            lv_obj_invalidate(scr);
+          }

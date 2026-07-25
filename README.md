@@ -44,8 +44,8 @@ HALO is built with a powerhouse of components designed to sniff out, measure, an
     - NO₂ (Nitrogen Dioxide)
     - NH₃ (Ammonia)
     - CH₄ (Methane)
-- **Neopixels (11-LED Ring):**
-  - 11x RGB LEDs to keep you visually updated on your air quality — or to add some flair to your desk.
+- **Neopixels (11-LED ring):**
+  - Side-fire **SK68XX-EC3210F** ([Adafruit #4892](https://cdn-shop.adafruit.com/product-files/4892/4892_SK68XX-EC3210F__REV.A.pdf)) — `NEO_GRB` + `NEO_KHZ800` / WS2812-compatible on GPIO47.
 
 ---
 
@@ -78,6 +78,11 @@ HALO is built with a powerhouse of components designed to sniff out, measure, an
 
 - **RGB Light Show:** HALO’s RGB LED halo can flash when your air quality is trash. It’s like HALO’s saying, “Get it together, human!”
 - **Self-Calibrating Genius:** Just take HALO outside, and it’ll calibrate itself. HALO loves fresh air, too.
+
+### Calibration & packages
+
+- Sensor calibration (CO₂ ASC, SEN55 heat offsets, fan clean, NowCast): see [`TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/CALIBRATION.md`](TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/CALIBRATION.md)
+- Optional modular packages (BLE stub, offline AQI history, weather, WireGuard): see [`TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/PACKAGES.md`](TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/PACKAGES.md)
 
 ---
 
