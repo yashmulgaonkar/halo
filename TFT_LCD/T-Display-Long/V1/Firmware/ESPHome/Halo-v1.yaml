@@ -16,6 +16,14 @@ esphome:
     name: "yashmulgaonkar.Halo-v1"
     version: "${version}"
 
+# SK68XX ring driver (repo-root components/ws2812_bitbang). Local path for
+# USB/CI builds from this directory; HA leaf installs use github:// — see PACKAGES.md.
+external_components:
+  - source:
+      type: local
+      path: ../../../../../components
+    components: [ws2812_bitbang]
+
 dashboard_import:
   package_import_url: github://yashmulgaonkar/halo/TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml@main
   import_full_config: true
@@ -26,6 +34,7 @@ dashboard_import:
 wifi:
   # Disable modem sleep — QSPI/AMOLED panels can blank after long uptime with default power save.
   power_save_mode: none
+  use_psram: true
 
   on_connect:
     - delay: 5s # Gives time for improv results to be transmitted
@@ -46,9 +55,10 @@ packages:
   globals: !include packages/base/globals.yaml
   system_core: !include packages/system/esphome_core.yaml
 
-  # BLE — pick exactly one:
-  ble: !include packages/features/ble/ble_improv.yaml
-  # ble: !include packages/features/ble/ble_stub.yaml
+  # BLE improv (Bluedroid) contends with Wi-Fi during NeoPixel updates.
+  # Stub is the release default; swap to ble_improv when you need provisioning.
+  # ble: !include packages/features/ble/ble_improv.yaml
+  ble: !include packages/features/ble/ble_stub.yaml
 
   airq_history: !include packages/features/airq/airq_history.yaml
   page_rotation: !include packages/features/page_rotation/page_rotation.yaml

@@ -1,7 +1,7 @@
 #Define Project
 substitutions:
   name: halo
-  version: "26.7.25.1"
+  version: "26.7.25.2"
   device_description: ${name} - v${version}.
 
 # Project metadata must live here (not only in Halo-v1.yaml) so HA devices that
@@ -38,8 +38,10 @@ spi:
 captive_portal:
 
 # Disable modem sleep — QSPI/AMOLED panels can blank after long uptime with default power save.
+# use_psram: move Wi-Fi buffers out of internal SRAM (helps LED bitbang under load).
 wifi:
   power_save_mode: none
+  use_psram: true
 
 # logger level comes from packages/system/esphome_core.yaml
 
@@ -1045,23 +1047,19 @@ text_sensor:
     entity_category: diagnostic
 
 light:
-  # Halo ring: Adafruit #4892 / OPSCO SK68XX-EC3210F (NEO_GRB + NEO_KHZ800).
-  # Proven-good params from Adafruit_NeoPixel test on this hardware: pin 47, 11 LEDs.
-  # Flicker under ESPHome is usually QSPI display contention, not wiring — keep
-  # use_psram/use_dma off and cap refresh while LVGL is active.
-  # Solid color: Effect = "None" + HA color picker.
-  - platform: esp32_rmt_led_strip
+  # Halo ring: Adafruit #4892 / OPSCO SK68XX-EC3210F on GPIO47 (11 LEDs, GRB).
+  # Stock esp32_rmt_led_strip flickers with Wi-Fi on ESP32-S3; ws2812_bitbang
+  # IRQ-masks both cores for the ~330 µs frame (Adafruit NeoPixel approach).
+  - platform: ws2812_bitbang
     name: Halo
     id: rgb_light
     rgb_order: GRB
     pin: GPIO47
     num_leds: 11
-    chipset: WS2812
-    use_psram: false
-    use_dma: false
-    rmt_symbols: 192
-    max_refresh_rate: 33ms
+    max_refresh_rate: 16ms
     restore_mode: RESTORE_AND_OFF
+    default_transition_length: 0s
+    gamma_correct: 1.0
     # HA often turns RGB lights on as pure blue when no prior color is known.
     # If that happens with no effect active, snap to white so the color picker
     # starts from a usable solid color.
@@ -1090,7 +1088,7 @@ light:
           max_brightness: 100%
       - addressable_rainbow:
           name: Addressable Rainbow
-          speed: 5
+          speed: 10
           width: 11
       - addressable_scan:
           name: Scan
