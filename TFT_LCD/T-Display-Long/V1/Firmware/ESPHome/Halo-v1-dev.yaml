@@ -14,6 +14,12 @@ esphome:
     name: "yashmulgaonkar.Halo-v1"
     version: "${version}"
 
+external_components:
+  - source:
+      type: local
+      path: ../../../../../components
+    components: [ws2812_bitbang]
+
 dashboard_import:
   package_import_url: github://yashmulgaonkar/halo/TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml@main
   import_full_config: true
