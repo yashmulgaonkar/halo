@@ -1055,7 +1055,7 @@ light:
     id: rgb_light
     rgb_order: GRB
     pin: GPIO47
-    num_leds: 12
+    num_leds: 5
     # Exact SK68XX timings (chipset presets can be slightly off and corrupt bits
     # when the AMOLED QSPI bus is busy → random rainbow colors).
     bit0_high: 300ns
