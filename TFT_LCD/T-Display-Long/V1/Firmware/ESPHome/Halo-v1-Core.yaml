@@ -1,26 +1,25 @@
 #Define Project
 substitutions:
   name: halo
-  version: "26.7.24.5"
+  version: "26.7.25.2"
   device_description: ${name} - v${version}.
 
-psram:
-  mode: octal
-  # speed: 120MHz
+# Project metadata must live here (not only in Halo-v1.yaml) so HA devices that
+# pull leaf packages without Halo-v1.yaml still report the HALO release version.
+esphome:
+  project:
+    name: "yashmulgaonkar.Halo-v1"
+    version: "${version}"
+  comment: "${device_description}"
+  on_boot:
+    - priority: -100
+      then:
+        - text_sensor.template.publish:
+            id: halo_firmware_version
+            state: "${version}"
 
-esp32:
-  board: esp32-s3-devkitc-1
-  flash_size: 16MB
-  cpu_frequency: 240MHz
-  framework:
-    type: esp-idf
-    advanced:
-      enable_idf_experimental_features: true
-    # platform_version: 6.9.0
-    # version: 5.3.1
-
-esp32_improv:
-  authorizer: none
+# esp32 / psram / logger live in packages/system/esphome_core.yaml
+# BLE / improv lives in packages/features/ble/ (pick one in Halo-v1.yaml).
 
 # axs15231 touch is built into ESPHome; do not override with the external
 # fork (its I2C write(..., stop) API breaks on 2026.7+).
@@ -38,8 +37,13 @@ spi:
 
 captive_portal:
 
-logger:
-  level: DEBUG
+# Disable modem sleep — QSPI/AMOLED panels can blank after long uptime with default power save.
+# use_psram: move Wi-Fi buffers out of internal SRAM (helps LED bitbang under load).
+wifi:
+  power_save_mode: none
+  use_psram: true
+
+# logger level comes from packages/system/esphome_core.yaml
 
 globals:
   - id: cycleCounter
@@ -65,6 +69,25 @@ switch:
     restore_mode: RESTORE_DEFAULT_OFF
     optimistic: true
     entity_category: "config"
+  # SCD4x forgets ASC across power loss; YAML default is re-applied at setup.
+  # Use stop → write ASC → start so the sensor accepts the command while idle.
+  - platform: template
+    name: "CO2 Auto Calibration"
+    id: co2_auto_calibration
+    icon: mdi:molecule-co2
+    restore_mode: RESTORE_DEFAULT_OFF
+    optimistic: true
+    entity_category: "config"
+    on_turn_on:
+      then:
+        - script.execute:
+            id: set_co2_auto_calibration
+            enable: true
+    on_turn_off:
+      then:
+        - script.execute:
+            id: set_co2_auto_calibration
+            enable: false
 
 select:
   - platform: template
@@ -130,13 +153,37 @@ interval:
           then:
             - light.turn_off:
                 id: rgb_light
+            # Leave a white color state so the next HA turn_on isn't pure blue.
+            - light.turn_on:
+                id: rgb_light
+                brightness: 0%
+                red: 100%
+                green: 100%
+                blue: 100%
+                effect: "None"
+            - light.turn_off:
+                id: rgb_light
             - lambda: 'id(cycleCounter) += 1;'              
 
 api:
+  # Required for airq_history flush (HomeassistantActionRequest / send_homeassistant_action).
+  homeassistant_services: true
   on_client_connected:
       - delay: 1s
       - light.turn_off: rgb_light
-      - lambda: 'id(cycleCounter) = 30;'    
+      # Seed a known RGB (white) while off so HA doesn't default the next turn_on to blue.
+      - light.turn_on:
+          id: rgb_light
+          brightness: 0%
+          red: 100%
+          green: 100%
+          blue: 100%
+          effect: "None"
+      - light.turn_off: rgb_light
+      - lambda: 'id(cycleCounter) = 30;'
+      # Flush offline AQI history buffer when HA reconnects (airq_history package).
+      - delay: 4s
+      - script.execute: flush_aqi_history
   services:
     #Co2 Calibration Service
     - service: calibrate_co2_value
@@ -193,6 +240,8 @@ touchscreen:
       swap_xy: false
     on_touch:
       - lambda: |-
+            id(last_touch_time) = millis();
+            id(last_auto_rotation_time) = millis();
             ESP_LOGI("cal", "x=%d, y=%d, x_raw=%d, y_raw=%0d",
             touch.x,
             touch.y,
@@ -276,6 +325,31 @@ script:
             }
             return time_buf;
 
+  # ASC must be written while the SCD4x is idle (same sequence as forced cal).
+  - id: set_co2_auto_calibration
+    mode: restart
+    parameters:
+      enable: bool
+    then:
+      - if:
+          condition:
+            lambda: "return millis() < 20000;"
+          then:
+            - delay: 20s
+      - lambda: |-
+          id(scd40).write_command((uint16_t) 0x3F86); // stop periodic measurement
+      - delay: 500ms
+      - lambda: |-
+          id(scd40).set_automatic_self_calibration(enable);
+          if (!id(scd40).write_command((uint16_t) 0x2416, (uint16_t) (enable ? 1 : 0))) {
+            ESP_LOGE("halo", "Failed to set CO2 auto calibration");
+          } else {
+            ESP_LOGI("halo", "CO2 auto calibration %s", enable ? "enabled" : "disabled");
+          }
+      - delay: 10ms
+      - lambda: |-
+          id(scd40).write_command((uint16_t) 0x21B1); // start periodic measurement
+
 number:
   - platform: template
     name: SEN55 Temperature Offset
@@ -343,6 +417,15 @@ sensor:
     state_class: "measurement"
     update_interval: never  # We'll update it manually
 
+  # Native US EPA NowCast alongside the on-device EPA PM2.5 AQI used by the UI.
+  - platform: aqi
+    name: "NowCast AQI"
+    id: nowcast_aqi
+    pm_2_5: pm_2_5
+    pm_10_0: pm_10_0
+    calculation_type: AQI
+    device_class: aqi
+
   - platform: scd4x
     id: scd40
     co2:
@@ -383,6 +466,7 @@ sensor:
                             - lvgl.label.update:
                                 id: co2_value
                                 text_color: my_red                                                                              
+    # Default off; toggle via "CO2 Auto Calibration" switch (ASC script).
     automatic_self_calibration: false
     update_interval: 10s
     measurement_mode: "periodic"
@@ -633,6 +717,13 @@ sensor:
 
   - platform: sen5x
     id: sen55
+    # Some modules misreport as SEN54 and drop NOx; force SEN55 (ESPHome 2026.7.2+).
+    model: sen55
+    i2c_id: lily_i2c
+    address: 0x69
+    update_interval: 10s
+    # store_baseline defaults to true; acceleration_mode defaults to low (RH/T).
+    # Do not nest those under voc/nox — they are platform-level only.
     pm_1_0:
       name: "PM <1µm Weight concentration"
       id: pm_1_0
@@ -747,6 +838,7 @@ sensor:
                 return buffer;       
     temperature:
       name: "SEN55 Temperature"
+      id: sen55_temperature
       accuracy_decimals: 1
       filters:
         - offset: !lambda return -1.0 * id(sen55_temperature_offset).state;
@@ -809,6 +901,7 @@ sensor:
                                 text_color: my_red  # Extreme discomfort or unsafe (°C)
     humidity:
       name: "SEN55 Humidity"
+      id: sen55_humidity
       filters:
         - lambda: return x - id(sen55_humidity_offset).state;
       accuracy_decimals: 0
@@ -860,6 +953,7 @@ sensor:
         gain_factor: 230
       on_value:
         then:
+          - component.update: voc_quality
           - lvgl.label.update:
               id: voc_value
               text: !lambda |-
@@ -892,10 +986,10 @@ sensor:
                           else:
                             - lvgl.label.update:
                                 id: voc_value
-                                text_color: my_red                      
-    i2c_id: lily_i2c
-    address: 0x69
-    update_interval: 10s    
+                                text_color: my_red
+    nox:
+      name: "SEN55 NOX"
+      id: sen55_nox
 
 button:
   - platform: restart
@@ -939,28 +1033,92 @@ text_sensor:
       else if (id(sen55_voc).state < 400) {
         return std::string("Very abnormal");} 
       else {
-        return std::string("Extremely abnormal");}    
+        return std::string("Extremely abnormal");}
+  - platform: template
+    name: "HALO Firmware Version"
+    id: halo_firmware_version
+    icon: mdi:information-outline
+    entity_category: diagnostic
+    update_interval: never
+    lambda: 'return {"${version}"};'
+  - platform: version
+    name: "ESPHome Version"
+    hide_timestamp: true
+    entity_category: diagnostic
 
 light:
-  # esp-idf requires esp32_rmt_led_strip (neopixelbus is Arduino-only).
-  - platform: esp32_rmt_led_strip
+  # Halo ring: Adafruit #4892 / OPSCO SK68XX-EC3210F on GPIO47 (11 LEDs, GRB).
+  # Stock esp32_rmt_led_strip flickers with Wi-Fi on ESP32-S3; ws2812_bitbang
+  # IRQ-masks both cores for the ~330 µs frame (Adafruit NeoPixel approach).
+  - platform: ws2812_bitbang
     name: Halo
     id: rgb_light
     rgb_order: GRB
     pin: GPIO47
-    num_leds: 12
-    chipset: WS2812
-    # Avoid PSRAM/QSPI contention that causes rainbow flicker on T-Display-S3-Long.
-    use_psram: false
-    use_dma: true
-    rmt_symbols: 192
+    num_leds: 11
     max_refresh_rate: 16ms
     restore_mode: RESTORE_AND_OFF
+    default_transition_length: 0s
+    gamma_correct: 1.0
+    # HA often turns RGB lights on as pure blue when no prior color is known.
+    # If that happens with no effect active, snap to white so the color picker
+    # starts from a usable solid color.
+    on_turn_on:
+      - if:
+          condition:
+            lambda: |-
+              auto name = id(rgb_light).get_effect_name();
+              if (!name.empty() && name != "None")
+                return false;
+              auto c = id(rgb_light).remote_values;
+              return c.get_red() < 0.05f && c.get_green() < 0.05f && c.get_blue() > 0.85f;
+          then:
+            - light.control:
+                id: rgb_light
+                red: 100%
+                green: 100%
+                blue: 100%
     effects:
+      # "None" (built-in) = solid color via HA color picker
+      - pulse:
+          name: Pulse
+          transition_length: 1s
+          update_interval: 1s
+          min_brightness: 20%
+          max_brightness: 100%
       - addressable_rainbow:
           name: Addressable Rainbow
           speed: 10
-          width: 50
+          width: 11
+      - addressable_scan:
+          name: Scan
+          move_interval: 80ms
+          scan_width: 2
+      - addressable_twinkle:
+          name: Twinkle
+          twinkle_probability: 5%
+          progress_interval: 8ms
+      - addressable_random_twinkle:
+          name: Random Twinkle
+          twinkle_probability: 5%
+          progress_interval: 32ms
+      - addressable_color_wipe:
+          name: Color Wipe
+          colors:
+            - red: 100%
+              green: 0%
+              blue: 0%
+              num_leds: 11
+            - red: 0%
+              green: 100%
+              blue: 0%
+              num_leds: 11
+            - red: 0%
+              green: 0%
+              blue: 100%
+              num_leds: 11
+          add_led_interval: 60ms
+          reverse: false
 
   - platform: monochromatic
     output: backlight

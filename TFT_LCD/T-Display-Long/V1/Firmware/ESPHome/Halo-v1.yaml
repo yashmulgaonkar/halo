@@ -9,11 +9,20 @@ esphome:
     board_build.f_flash: 80000000L
     board_build.f_cpu: 240000000L
 
-  min_version: 2025.6.2
+  # model: sen55 and related packages require 2026.7.2+
+  min_version: 2026.7.2
 
   project:
     name: "yashmulgaonkar.Halo-v1"
     version: "${version}"
+
+# SK68XX ring driver (repo-root components/ws2812_bitbang). Local path for
+# USB/CI builds from this directory; HA leaf installs use github:// — see PACKAGES.md.
+external_components:
+  - source:
+      type: local
+      path: ../../../../../components
+    components: [ws2812_bitbang]
 
 dashboard_import:
   package_import_url: github://yashmulgaonkar/halo/TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/Halo-v1.yaml@main
@@ -25,6 +34,7 @@ dashboard_import:
 wifi:
   # Disable modem sleep — QSPI/AMOLED panels can blank after long uptime with default power save.
   power_save_mode: none
+  use_psram: true
 
   on_connect:
     - delay: 5s # Gives time for improv results to be transmitted
@@ -33,6 +43,29 @@ wifi:
   ap:
     ssid: "Halo Hotspot"
 
+# ============================================================================
+# Package profile — default = full HALO
+#
+# Local/CI: sibling !include (this file).
+# HA dashboard: see PACKAGES.md — list each package file ONCE.
+# Never list both Halo-v1.yaml and Halo-v1-Core.yaml in the same remote
+# files: list (duplicates Core → "Startup Light Blink" conflict).
+# ============================================================================
 packages:
-  # Sibling include so CI / branch imports use the Core from the same ref (not hard-coded main).
+  globals: !include packages/base/globals.yaml
+  system_core: !include packages/system/esphome_core.yaml
+
+  # BLE improv (Bluedroid) contends with Wi-Fi during NeoPixel updates.
+  # Stub is the release default; swap to ble_improv when you need provisioning.
+  # ble: !include packages/features/ble/ble_improv.yaml
+  ble: !include packages/features/ble/ble_stub.yaml
+
+  airq_history: !include packages/features/airq/airq_history.yaml
+  page_rotation: !include packages/features/page_rotation/page_rotation.yaml
+  ota_channel: !include packages/features/ota/ota_channel.yaml
+
+  # Optional (off by default):
+  # weather: !include packages/features/weather/weather_ha.yaml
+  # wireguard: !include packages/features/wireguard/wireguard.yaml
+
   core: !include Halo-v1-Core.yaml
