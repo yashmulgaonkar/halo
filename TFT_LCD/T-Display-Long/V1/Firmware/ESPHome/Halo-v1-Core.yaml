@@ -1,8 +1,22 @@
 #Define Project
 substitutions:
   name: halo
-  version: "26.7.24.6"
+  version: "26.7.25.1"
   device_description: ${name} - v${version}.
+
+# Project metadata must live here (not only in Halo-v1.yaml) so HA devices that
+# pull leaf packages without Halo-v1.yaml still report the HALO release version.
+esphome:
+  project:
+    name: "yashmulgaonkar.Halo-v1"
+    version: "${version}"
+  comment: "${device_description}"
+  on_boot:
+    - priority: -100
+      then:
+        - text_sensor.template.publish:
+            id: halo_firmware_version
+            state: "${version}"
 
 # esp32 / psram / logger live in packages/system/esphome_core.yaml
 # BLE / improv lives in packages/features/ble/ (pick one in Halo-v1.yaml).
@@ -137,6 +151,16 @@ interval:
           then:
             - light.turn_off:
                 id: rgb_light
+            # Leave a white color state so the next HA turn_on isn't pure blue.
+            - light.turn_on:
+                id: rgb_light
+                brightness: 0%
+                red: 100%
+                green: 100%
+                blue: 100%
+                effect: "None"
+            - light.turn_off:
+                id: rgb_light
             - lambda: 'id(cycleCounter) += 1;'              
 
 api:
@@ -144,6 +168,15 @@ api:
   homeassistant_services: true
   on_client_connected:
       - delay: 1s
+      - light.turn_off: rgb_light
+      # Seed a known RGB (white) while off so HA doesn't default the next turn_on to blue.
+      - light.turn_on:
+          id: rgb_light
+          brightness: 0%
+          red: 100%
+          green: 100%
+          blue: 100%
+          effect: "None"
       - light.turn_off: rgb_light
       - lambda: 'id(cycleCounter) = 30;'
       # Flush offline AQI history buffer when HA reconnects (airq_history package).
@@ -998,12 +1031,24 @@ text_sensor:
       else if (id(sen55_voc).state < 400) {
         return std::string("Very abnormal");} 
       else {
-        return std::string("Extremely abnormal");}    
+        return std::string("Extremely abnormal");}
+  - platform: template
+    name: "HALO Firmware Version"
+    id: halo_firmware_version
+    icon: mdi:information-outline
+    entity_category: diagnostic
+    update_interval: never
+    lambda: 'return {"${version}"};'
+  - platform: version
+    name: "ESPHome Version"
+    hide_timestamp: true
+    entity_category: diagnostic
 
 light:
   # Halo ring: Adafruit #4892 / OPSCO SK68XX-EC3210F side-fire pixels
   # (https://cdn-shop.adafruit.com/product-files/4892/4892_SK68XX-EC3210F__REV.A.pdf)
   # Datasheet: T0H=0.3µs, T1H=0.9µs, period 1.2µs, reset >200µs, GRB order.
+  # Solid color: set Effect to "None" and use the HA color picker.
   # esp-idf requires esp32_rmt_led_strip (neopixelbus is Arduino-only).
   - platform: esp32_rmt_led_strip
     name: Halo
@@ -1025,11 +1070,65 @@ light:
     # Cap updates ~30 Hz so LVGL flushes don't preempt mid-frame.
     max_refresh_rate: 33ms
     restore_mode: RESTORE_AND_OFF
+    # HA often turns RGB lights on as pure blue when no prior color is known.
+    # If that happens with no effect active, snap to white so the color picker
+    # starts from a usable solid color.
+    on_turn_on:
+      - if:
+          condition:
+            lambda: |-
+              auto name = id(rgb_light).get_effect_name();
+              if (!name.empty() && name != "None")
+                return false;
+              auto c = id(rgb_light).remote_values;
+              return c.get_red() < 0.05f && c.get_green() < 0.05f && c.get_blue() > 0.85f;
+          then:
+            - light.control:
+                id: rgb_light
+                red: 100%
+                green: 100%
+                blue: 100%
     effects:
+      # "None" (built-in) = solid color via HA color picker
+      - pulse:
+          name: Pulse
+          transition_length: 1s
+          update_interval: 1s
+          min_brightness: 20%
+          max_brightness: 100%
       - addressable_rainbow:
           name: Addressable Rainbow
           speed: 5
           width: 12
+      - addressable_scan:
+          name: Scan
+          move_interval: 80ms
+          scan_width: 2
+      - addressable_twinkle:
+          name: Twinkle
+          twinkle_probability: 5%
+          progress_interval: 8ms
+      - addressable_random_twinkle:
+          name: Random Twinkle
+          twinkle_probability: 5%
+          progress_interval: 32ms
+      - addressable_color_wipe:
+          name: Color Wipe
+          colors:
+            - red: 100%
+              green: 0%
+              blue: 0%
+              num_leds: 12
+            - red: 0%
+              green: 100%
+              blue: 0%
+              num_leds: 12
+            - red: 0%
+              green: 0%
+              blue: 100%
+              num_leds: 12
+          add_led_interval: 60ms
+          reverse: false
 
   - platform: monochromatic
     output: backlight
