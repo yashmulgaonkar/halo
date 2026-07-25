@@ -1,0 +1,152 @@
+# Temporary LED-only firmware for T-Display-S3-Long + Halo NeoPixel ring.
+#
+# Isolates GPIO47 / 11× SK68XX (NEO_GRB + NEO_KHZ800) with NO display, LVGL,
+# sensors, or QSPI — closest ESPHome equivalent to the Adafruit_NeoPixel sketch.
+#
+# Flash over USB:
+#   esphome run Halo-v1-led-test.yaml
+#
+# On boot the ring runs Addressable Rainbow automatically. Use HA / web_server
+# to try solid colors and other effects. When done, flash Halo-v1.yaml again.
+
+substitutions:
+  name: halo-led-test
+  friendly_name: Halo LED Test (no display)
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2026.7.2
+  project:
+    name: "yashmulgaonkar.Halo-LED-Test"
+    version: "led-test-1"
+  on_boot:
+    - priority: -100
+      then:
+        - delay: 2s
+        - light.turn_on:
+            id: rgb_light
+            brightness: 40%
+            effect: "Addressable Rainbow"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  cpu_frequency: 240MHz
+  framework:
+    type: esp-idf
+
+# No PSRAM / QSPI / LVGL — keep the SoC quiet like the Arduino sketch.
+
+logger:
+  level: INFO
+
+api:
+  reboot_timeout: 0s
+
+ota:
+  - platform: esphome
+
+wifi:
+  power_save_mode: none
+  ap:
+    ssid: "Halo-LED-Test"
+    password: "halotest1"
+
+captive_portal:
+
+web_server:
+  port: 80
+
+# Same params as working Adafruit sketch: pin 47, 11 LEDs, GRB, 800 kHz.
+light:
+  - platform: esp32_rmt_led_strip
+    name: Halo Ring
+    id: rgb_light
+    rgb_order: GRB
+    pin: GPIO47
+    num_leds: 11
+    chipset: WS2812
+    use_psram: false
+    use_dma: false
+    rmt_symbols: 192
+    # No display contention here — allow faster updates like the Arduino loop.
+    max_refresh_rate: 16ms
+    restore_mode: ALWAYS_OFF
+    default_transition_length: 0s
+    effects:
+      - pulse:
+          name: Pulse
+          transition_length: 1s
+          update_interval: 1s
+      - addressable_rainbow:
+          name: Addressable Rainbow
+          speed: 10
+          width: 11
+      - addressable_color_wipe:
+          name: Color Wipe RGB
+          colors:
+            - red: 100%
+              green: 0%
+              blue: 0%
+              num_leds: 11
+            - red: 0%
+              green: 100%
+              blue: 0%
+              num_leds: 11
+            - red: 0%
+              green: 0%
+              blue: 100%
+              num_leds: 11
+          add_led_interval: 50ms
+      - addressable_scan:
+          name: Scan
+          move_interval: 50ms
+          scan_width: 2
+      - addressable_twinkle:
+          name: Twinkle
+      - addressable_random_twinkle:
+          name: Random Twinkle
+
+button:
+  - platform: template
+    name: "LED: Solid Red"
+    on_press:
+      - light.turn_on:
+          id: rgb_light
+          red: 100%
+          green: 0%
+          blue: 0%
+          brightness: 40%
+          effect: "None"
+  - platform: template
+    name: "LED: Solid Green"
+    on_press:
+      - light.turn_on:
+          id: rgb_light
+          red: 0%
+          green: 100%
+          blue: 0%
+          brightness: 40%
+          effect: "None"
+  - platform: template
+    name: "LED: Solid Blue"
+    on_press:
+      - light.turn_on:
+          id: rgb_light
+          red: 0%
+          green: 0%
+          blue: 100%
+          brightness: 40%
+          effect: "None"
+  - platform: template
+    name: "LED: Rainbow"
+    on_press:
+      - light.turn_on:
+          id: rgb_light
+          brightness: 40%
+          effect: "Addressable Rainbow"
+  - platform: template
+    name: "LED: Off"
+    on_press:
+      - light.turn_off: rgb_light
