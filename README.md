@@ -44,8 +44,8 @@ HALO is built with a powerhouse of components designed to sniff out, measure, an
     - NO₂ (Nitrogen Dioxide)
     - NH₃ (Ammonia)
     - CH₄ (Methane)
-- **Neopixels (11–12 LED ring):**
-  - Side-fire **SK68XX-EC3210F** ([Adafruit #4892 datasheet](https://cdn-shop.adafruit.com/product-files/4892/4892_SK68XX-EC3210F__REV.A.pdf)) — WS2812-compatible, GRB order — for air-quality color and effects.
+- **Neopixels (11-LED ring):**
+  - Side-fire **SK68XX-EC3210F** ([Adafruit #4892](https://cdn-shop.adafruit.com/product-files/4892/4892_SK68XX-EC3210F__REV.A.pdf)) — `NEO_GRB` + `NEO_KHZ800` / WS2812-compatible on GPIO47.
 
 ---
 
