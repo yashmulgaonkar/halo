@@ -4,8 +4,6 @@
 
 Welcome to HALO — your hilariously over-engineered, open-source buddy who sniffs the air so you don’t have to. Designed for folks who care about the air they breathe but also want a sensor with personality, HALO operates on WiFi via ESPHome, which means no creepy cloud subscriptions or hidden fees. It’s just you, HALO, and your dusty air duking it out together.
 
-[![Repo analytics](https://raw.githubusercontent.com/yashmulgaonkar/repo-analytics/main/out/halo/analytics.svg)](https://github.com/yashmulgaonkar/repo-analytics)
-
 ---
 
 ## Features? Oh, HALO’s Got a Few Good Ones:
@@ -116,6 +114,8 @@ We love tinkerers, dreamers, and anyone who thinks, “You know what HALO really
 </p>
 
 ---
+
+[![Repo analytics](https://raw.githubusercontent.com/yashmulgaonkar/repo-analytics/main/out/halo/analytics.svg)](https://github.com/yashmulgaonkar/repo-analytics)
 
 ![Alt](https://repobeats.axiom.co/api/embed/ac97497b5f4000e2f2d8debed1eb98a3d8f0fbf4.svg "Repobeats analytics image")
 
