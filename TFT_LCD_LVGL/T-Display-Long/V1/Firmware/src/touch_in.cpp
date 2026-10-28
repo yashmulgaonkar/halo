@@ -15,6 +15,7 @@ int g_startY = 0;
 bool g_tracking = false;
 int g_swipe = 0;
 uint32_t g_lastActivity = 0;
+bool g_dragged = false;
 constexpr int kSwipePx = 36;
 
 bool axsPresent(uint8_t addr) {
@@ -35,14 +36,13 @@ bool readPoint(int& x, int& y) {
   uint8_t d[8];
   for (int i = 0; i < 8; i++) d[i] = Wire1.read();
   if (d[0] != 0 || d[1] == 0) return false;
-  x = ((d[2] & 0x0F) << 8) | d[3];
-  y = ((d[4] & 0x0F) << 8) | d[5];
-  // Some controllers report the long axis as X while the glass is portrait.
-  if (x >= HALO_LCD_W && x < HALO_LCD_H && y >= 0 && y < HALO_LCD_W) {
-    int tmp = x;
-    x = y;
-    y = tmp;
-  }
+  // The controller's X runs along the 640px glass and starts at the bottom.
+  // Y runs across the 180px width. Swapping only when X is past 180 left the
+  // lower part of the glass reporting a point near the top of the screen.
+  int rawX = ((d[2] & 0x0F) << 8) | d[3];
+  int rawY = ((d[4] & 0x0F) << 8) | d[5];
+  x = rawY;
+  y = (HALO_LCD_H - 1) - rawX;
   if (x < 0) x = 0;
   if (y < 0) y = 0;
   if (x >= HALO_LCD_W) x = HALO_LCD_W - 1;
@@ -65,11 +65,17 @@ void readCb(lv_indev_drv_t*, lv_indev_data_t* data) {
   if (readPoint(x, y)) {
     if (!g_tracking) {
       g_tracking = true;
+      g_dragged = false;
       g_startX = x;
       g_startY = y;
     }
     g_lastX = x;
     g_lastY = y;
+    int dx = x - g_startX;
+    int dy = y - g_startY;
+    if (dx < 0) dx = -dx;
+    if (dy < 0) dy = -dy;
+    if (dx > 14 || dy > 14) g_dragged = true;
     g_lastActivity = millis();
     data->state = LV_INDEV_STATE_PR;
     data->point.x = x;
@@ -91,6 +97,8 @@ int touchTakeSwipe() {
   g_swipe = 0;
   return swipe;
 }
+
+bool touchDragged() { return g_dragged; }
 
 uint32_t touchLastActivityMs() { return g_lastActivity; }
 

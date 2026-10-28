@@ -13,6 +13,7 @@ struct Readings {
 
   bool co2Ok = false;
   bool senOk = false;
+  bool noxOk = false;
   bool bmeOk = false;
   bool micsOk = false;
 
@@ -25,6 +26,7 @@ struct Readings {
   float senHum = 0;
   float voc = 0;
   float nox = 0;
+  char senName[16] = {};
   float bmeTempC = 0;
   float bmeHum = 0;
   float bmePressureHpa = 0;

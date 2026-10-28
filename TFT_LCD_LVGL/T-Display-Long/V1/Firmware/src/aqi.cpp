@@ -94,6 +94,36 @@ bool haloDisplayAqi(float pm25, int& aqi, bool& evacuate) {
   return true;
 }
 
+bool haloRingColor(bool aqiOk, int aqi, bool evacuate, bool co2Ok, float co2, uint8_t& r, uint8_t& g, uint8_t& b) {
+  if (!aqiOk && !co2Ok) return false;
+  int rank = -1;
+  if (aqiOk) {
+    int level = 4;
+    if (evacuate || aqi > 300) level = 5;
+    else if (aqi <= 50) level = 0;
+    else if (aqi <= 100) level = 1;
+    else if (aqi <= 150) level = 2;
+    else if (aqi <= 200) level = 3;
+    rank = level;
+  }
+  if (co2Ok) {
+    int level = 3;
+    if (co2 <= 600) level = 0;
+    else if (co2 <= 1000) level = 1;
+    else if (co2 <= 1500) level = 2;
+    if (level > rank) rank = level;
+  }
+  // Fuller than the on-screen pastels. The green die is much stronger than red or blue.
+  static const uint8_t colors[][3] = {
+      {0x00, 0xFF, 0x28}, {0xFF, 0x64, 0x00}, {0xFF, 0x30, 0x00},
+      {0xFF, 0x00, 0x00}, {0x90, 0x00, 0xFF}, {0xFF, 0x00, 0x30},
+  };
+  r = colors[rank][0];
+  g = colors[rank][1];
+  b = colors[rank][2];
+  return true;
+}
+
 const char* aqiCategory(int aqi, bool evacuate) {
   if (evacuate) return "Evacuate";
   if (aqi <= 50) return "Good";

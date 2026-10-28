@@ -18,6 +18,9 @@ struct Settings {
   float sen55TempOffset;
   float sen55HumOffset;
   float no2Offset;
+  float tempBias;
+  float humBias;
+  float gasBias[7];
   bool co2Asc;
   bool startupBlink;
   uint8_t backlight;

@@ -56,6 +56,7 @@ void RingLight::suspend(bool suspended) { suspended_ = suspended; }
 
 void RingLight::setPower(bool on) {
   power_ = on;
+  holdOff_ = !on;
   dirty_ = true;
   cleared_ = false;
 }
@@ -66,10 +67,26 @@ void RingLight::setBrightness(uint8_t brightness) {
 }
 
 void RingLight::setColor(uint8_t r, uint8_t g, uint8_t b) {
+  if (red_ == r && green_ == g && blue_ == b) return;
   red_ = r;
   green_ = g;
   blue_ = b;
   dirty_ = true;
+}
+
+void RingLight::showAir(uint8_t r, uint8_t g, uint8_t b) {
+  if (holdOff_) return;
+  if (!power_) {
+    if (brightness_ == 0) brightness_ = 160;
+    power_ = true;
+    cleared_ = false;
+    dirty_ = true;
+  }
+  if (effect_ != RingEffect::None) {
+    effect_ = RingEffect::None;
+    dirty_ = true;
+  }
+  setColor(r, g, b);
 }
 
 void RingLight::setEffect(const char* name) {

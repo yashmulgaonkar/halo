@@ -43,9 +43,9 @@ const SensorEnt kSensors[] = {
     {"sen55_temperature", "SEN55 Temperature", "°C", "temperature", nullptr, "measurement", 1},
     {"sen55_humidity", "SEN55 Humidity", "%", "humidity", nullptr, "measurement", 0},
     {"sen55_voc", "SEN55 VOC", nullptr, nullptr, nullptr, "measurement", 0},
-    {"sen55_nox", "SEN55 NOX", nullptr, nullptr, nullptr, "measurement", 0},
-    {"computed_aqi", "Computed AQI", "AQI", "aqi", nullptr, "measurement", 0},
-    {"nowcast_aqi", "NowCast AQI", "AQI", "aqi", nullptr, "measurement", 0},
+    {"sen55_nox", "SEN55 NOX", nullptr, nullptr, nullptr, "measurement", 1},
+    {"computed_aqi", "Computed AQI", nullptr, "aqi", nullptr, "measurement", 0},
+    {"nowcast_aqi", "NowCast AQI", nullptr, "aqi", nullptr, "measurement", 0},
     {"uptime", "Uptime", "s", "duration", "diagnostic", "total_increasing", 0},
     {"rssi", "RSSI", "dBm", "signal_strength", "diagnostic", "measurement", 0},
     {"history_fill", "AQI History Buffer Fill", "%", nullptr, "diagnostic", "measurement", 0},
@@ -87,7 +87,7 @@ bool lookup(const char* key, const Readings& r, bool wifi, float& out) {
   if (strcmp(key, "sen55_temperature") == 0) { out = r.senTempC; return r.senOk; }
   if (strcmp(key, "sen55_humidity") == 0) { out = r.senHum; return r.senOk; }
   if (strcmp(key, "sen55_voc") == 0) { out = r.voc; return r.senOk; }
-  if (strcmp(key, "sen55_nox") == 0) { out = r.nox; return r.senOk; }
+  if (strcmp(key, "sen55_nox") == 0) { out = r.nox; return r.senOk && r.noxOk; }
   if (strcmp(key, "computed_aqi") == 0) { out = r.aqi; return r.aqiOk; }
   if (strcmp(key, "nowcast_aqi") == 0) { out = r.nowcast; return r.nowcastOk; }
   if (strcmp(key, "uptime") == 0) { out = millis() / 1000.0f; return true; }
@@ -380,7 +380,16 @@ void NetworkService::publishDiscovery() {
   num("no2_offset", "MICS4514 NO2 Offset", -1, 1, 0.01f, "ppm");
   num("history_interval", "AQI History Sample Interval", 30, 1800, 30, "s");
   num("history_days", "AQI History Max Coverage", 0.5f, 7, 0.5f, "days");
-  num("page_interval", "Auto Page Rotation Interval", 5, 300, 1, "s");
+  num("page_interval", "Screen Cycle Timeout", 0, 300, 1, "s");
+  num("temp_bias", "Temperature Bias", -20, 20, 0.1f, "°C");
+  num("hum_bias", "Humidity Bias", -30, 30, 1, "%");
+  num("co_bias", "CO Bias", -50, 50, 0.1f, "ppm");
+  num("no2_bias", "NO2 Bias", -50, 50, 0.01f, "ppm");
+  num("h2_bias", "Hydrogen Bias", -50, 50, 0.1f, "ppm");
+  num("ch4_bias", "Methane Bias", -50, 50, 0.1f, "ppm");
+  num("ethanol_bias", "Ethanol Bias", -50, 50, 0.01f, "ppm");
+  num("nh3_bias", "Ammonia Bias", -50, 50, 0.1f, "ppm");
+  num("nox_bias", "NOx Bias", -50, 50, 0.1f, "idx");
 
   {
     JsonDocument doc;
@@ -530,6 +539,15 @@ void NetworkService::publishStates() {
   pubNum("history_interval", cfg.historyIntervalS, 0);
   pubNum("history_days", cfg.historyDays, 1);
   pubNum("page_interval", cfg.pageIntervalS, 0);
+  pubNum("temp_bias", cfg.tempBias, 1);
+  pubNum("hum_bias", cfg.humBias, 0);
+  pubNum("co_bias", cfg.gasBias[0], 1);
+  pubNum("no2_bias", cfg.gasBias[1], 2);
+  pubNum("h2_bias", cfg.gasBias[2], 1);
+  pubNum("ch4_bias", cfg.gasBias[3], 1);
+  pubNum("ethanol_bias", cfg.gasBias[4], 2);
+  pubNum("nh3_bias", cfg.gasBias[5], 1);
+  pubNum("nox_bias", cfg.gasBias[6], 1);
 
   snprintf(topic, sizeof(topic), "%s/select/temp_unit", root_);
   mqtt_.publish(topic, cfg.tempUnitName(), true);
@@ -592,6 +610,7 @@ void NetworkService::handleCmd(const char* cmd, const char* body) {
     save = true;
   } else if (strcmp(cmd, "switch/page_rotation") == 0) {
     cfg.pageRotation = isOn(body);
+    if (cfg.pageRotation && cfg.pageIntervalS == 0) cfg.pageIntervalS = 30;
     save = true;
   } else if (strcmp(cmd, "number/sen55_temp_offset") == 0) {
     float v = atof(body);
@@ -610,7 +629,38 @@ void NetworkService::handleCmd(const char* cmd, const char* body) {
     if (v >= 0.5f && v <= 7) { cfg.historyDays = v; save = true; }
   } else if (strcmp(cmd, "number/page_interval") == 0) {
     int v = atoi(body);
-    if (v >= 5 && v <= 300) { cfg.pageIntervalS = (uint16_t)v; save = true; }
+    if (v >= 0 && v <= 300) {
+      cfg.pageIntervalS = (uint16_t)v;
+      cfg.pageRotation = v > 0;
+      save = true;
+    }
+  } else if (strcmp(cmd, "number/temp_bias") == 0) {
+    float v = atof(body);
+    if (v >= -20 && v <= 20) { cfg.tempBias = v; save = true; }
+  } else if (strcmp(cmd, "number/hum_bias") == 0) {
+    float v = atof(body);
+    if (v >= -30 && v <= 30) { cfg.humBias = v; save = true; }
+  } else if (strcmp(cmd, "number/co_bias") == 0) {
+    float v = atof(body);
+    if (v >= -50 && v <= 50) { cfg.gasBias[0] = v; save = true; }
+  } else if (strcmp(cmd, "number/no2_bias") == 0) {
+    float v = atof(body);
+    if (v >= -50 && v <= 50) { cfg.gasBias[1] = v; save = true; }
+  } else if (strcmp(cmd, "number/h2_bias") == 0) {
+    float v = atof(body);
+    if (v >= -50 && v <= 50) { cfg.gasBias[2] = v; save = true; }
+  } else if (strcmp(cmd, "number/ch4_bias") == 0) {
+    float v = atof(body);
+    if (v >= -50 && v <= 50) { cfg.gasBias[3] = v; save = true; }
+  } else if (strcmp(cmd, "number/ethanol_bias") == 0) {
+    float v = atof(body);
+    if (v >= -50 && v <= 50) { cfg.gasBias[4] = v; save = true; }
+  } else if (strcmp(cmd, "number/nh3_bias") == 0) {
+    float v = atof(body);
+    if (v >= -50 && v <= 50) { cfg.gasBias[5] = v; save = true; }
+  } else if (strcmp(cmd, "number/nox_bias") == 0) {
+    float v = atof(body);
+    if (v >= -50 && v <= 50) { cfg.gasBias[6] = v; save = true; }
   } else if (strcmp(cmd, "select/temp_unit") == 0) {
     cfg.setTempUnitName(body);
     save = true;
@@ -660,8 +710,13 @@ void NetworkService::handleCmd(const char* cmd, const char* body) {
   }
   if (save) {
     cfg.save();
+    sensors().syncBias();
     if (mqtt_.connected()) publishStates();
   }
+}
+
+void NetworkService::publishTelemetry() {
+  if (mqtt_.connected()) publishStates();
 }
 
 void NetworkService::sendSetup() {

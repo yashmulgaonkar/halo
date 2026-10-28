@@ -1,5 +1,6 @@
 #include <Arduino.h>
 
+#include "aqi.h"
 #include "backlight.h"
 #include "board_pins.h"
 #include "display_port.h"
@@ -44,6 +45,13 @@ void loop() {
   sensors().poll(network().mqttConnected());
   ring().markStage(2, micros() - mark);
   ring().loop(settings().startupBlink, network().mqttConnected(), network().wifiConnected());
+  const Readings& air = sensors().latest();
+  uint8_t airR = 0;
+  uint8_t airG = 0;
+  uint8_t airB = 0;
+  if (haloRingColor(air.aqiOk, air.aqi, air.aqiEvac, air.co2Ok, air.co2, airR, airG, airB)) {
+    ring().showAir(airR, airG, airB);
+  }
 
   bool bootDown = digitalRead(PIN_BOOT) == LOW;
   if (bootDown) {

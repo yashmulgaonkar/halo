@@ -14,6 +14,7 @@ class SensorHub {
   void requestAsc(bool enable);
   void requestCalibration(uint16_t ppm);
   void requestFanClean();
+  void syncBias();
 
  private:
   void applyPending();
@@ -46,6 +47,9 @@ class SensorHub {
   int hourCount_ = 0;
   uint32_t hourKey_ = 0;
   bool hourOpen_ = false;
+  float appliedTemp_ = 0;
+  float appliedHum_ = 0;
+  float appliedGas_[7] = {};
   float hourSum25_ = 0;
   float hourSum10_ = 0;
   int hourSamples_ = 0;

@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <math.h>
+#include <string.h>
 
 #include <Adafruit_BME280.h>
 #include <SensirionI2CSen5x.h>
@@ -67,6 +68,14 @@ void SensorHub::begin() {
     g_sen.begin(Wire);
     uint16_t err = g_sen.deviceReset();
     delay(200);
+    unsigned char rawName[32] = {};
+    err = g_sen.getProductName(rawName, sizeof(rawName) - 1);
+    if (!err && rawName[0]) {
+      strncpy(readings_.senName, (const char*)rawName, sizeof(readings_.senName) - 1);
+      Serial.printf("Particle sensor %s\n", readings_.senName);
+    } else {
+      Serial.printf("Particle sensor name failed: %u\n", err);
+    }
     // Sensirion SEN5x engineering-guide defaults used by the ESPHome profile.
     err = g_sen.setVocAlgorithmTuningParameters(100, 72, 72, 180, 50, 230);
     if (err) Serial.printf("SEN55 VOC tuning failed: %u\n", err);
@@ -226,10 +235,18 @@ void SensorHub::readParticles() {
       readings_.pm25 = pm25;
       readings_.pm4 = pm4;
       readings_.pm10 = pm10;
-      readings_.senTempC = temp - cfg.sen55TempOffset;
-      readings_.senHum = clampHum(hum - cfg.sen55HumOffset);
+      readings_.senTempC = temp - cfg.sen55TempOffset + cfg.tempBias;
+      readings_.senHum = clampHum(hum - cfg.sen55HumOffset + cfg.humBias);
       readings_.voc = voc;
-      readings_.nox = nox;
+      appliedTemp_ = cfg.tempBias;
+      appliedHum_ = cfg.humBias;
+      // 0x7FFF from the sensor is "unknown". A SEN54 has no NOx channel, and a
+      // SEN55 also returns that for the first 10 seconds after reset.
+      if (!isnan(nox)) {
+        readings_.nox = nox + cfg.gasBias[6];
+        appliedGas_[6] = cfg.gasBias[6];
+        readings_.noxOk = true;
+      }
       readings_.vocQuality = vocQualityLabel(voc);
       readings_.senOk = true;
       readings_.aqiOk = haloDisplayAqi(pm25, readings_.aqi, readings_.aqiEvac);
@@ -282,13 +299,31 @@ void SensorHub::readGases() {
   float nh3 = 0;
   if (redF <= 0.98f && redF >= 0.2532f) nh3 = 0.9f / powf(redF, 4.6f);
 
-  readings_.co = co;
-  readings_.no2 = no2;
-  readings_.ch4 = ch4;
-  readings_.ethanol = ethanol;
-  readings_.h2 = h2;
-  readings_.nh3 = nh3;
+  readings_.co = co + settings().gasBias[0];
+  readings_.no2 = no2 + settings().gasBias[1];
+  readings_.h2 = h2 + settings().gasBias[2];
+  readings_.ch4 = ch4 + settings().gasBias[3];
+  readings_.ethanol = ethanol + settings().gasBias[4];
+  readings_.nh3 = nh3 + settings().gasBias[5];
+  for (int i = 0; i < 6; i++) appliedGas_[i] = settings().gasBias[i];
   readings_.micsOk = true;
+}
+
+void SensorHub::syncBias() {
+  const Settings& cfg = settings();
+  if (readings_.senOk) {
+    readings_.senTempC += cfg.tempBias - appliedTemp_;
+    readings_.senHum = clampHum(readings_.senHum + (cfg.humBias - appliedHum_));
+    if (readings_.noxOk) readings_.nox += cfg.gasBias[6] - appliedGas_[6];
+  }
+  if (readings_.micsOk) {
+    float* vals[] = {&readings_.co, &readings_.no2, &readings_.h2, &readings_.ch4, &readings_.ethanol, &readings_.nh3};
+    for (int i = 0; i < 6; i++) *vals[i] += cfg.gasBias[i] - appliedGas_[i];
+  }
+  appliedTemp_ = cfg.tempBias;
+  appliedHum_ = cfg.humBias;
+  for (int i = 0; i < 7; i++) appliedGas_[i] = cfg.gasBias[i];
+  if (readings_.senOk || readings_.micsOk) readings_.updatedMs = millis();
 }
 
 void SensorHub::updateNowcast() {
