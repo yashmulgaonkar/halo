@@ -65,13 +65,34 @@
         list-style: none;
         line-height: 2em;
       }
+      .choice {
+        margin: 28px 0;
+        padding: 16px 16px 8px;
+        border: 1px solid #ccc;
+        border-radius: 12px;
+      }
+      .choice h2,
+      .choice p {
+        margin-top: 0;
+      }
+      .button-row {
+        text-align: center;
+        margin: 16px 0 8px;
+      }
       @media (prefers-color-scheme: dark) {
         body {
-          background-color: #333;
-          color: #fff;
+          background-color: #111;
+          color: #f4f7fb;
         }
         a {
           color: #58a6ff;
+        }
+        .choice {
+          border-color: #2c3544;
+          background: #1a1e27;
+        }
+        .footer {
+          border-top-color: #2c3544;
         }
       }
     </style>
@@ -80,11 +101,39 @@
   <body>
     <div class="content">
       <h1>Halo Firmware Installer</h1>
-      
-      <p class="button-row" align="center">
-        <esp-web-install-button manifest="./firmware/manifest.json">
-        </esp-web-install-button>
+      <p>
+        Plug the T-Display-S3 Long into this computer with USB-C and use Chrome or Edge.
+        If the installer cannot see the board, hold BOOT, tap RST, then release BOOT.
+        Installing one firmware replaces the other, and Wi-Fi is entered again afterward.
       </p>
+
+      <section class="choice">
+        <h2>ESPHome</h2>
+        <p>
+          The original firmware. Home Assistant adopts it through the ESPHome integration.
+          After install, join the HALO hotspot and enter your Wi-Fi.
+        </p>
+        <p class="button-row">
+          <esp-web-install-button manifest="./firmware/manifest.json">
+            <button slot="activate">Install ESPHome</button>
+          </esp-web-install-button>
+        </p>
+      </section>
+
+      <section class="choice">
+        <h2>LVGL</h2>
+        <p>
+          The newer screen firmware. Home Assistant finds it through MQTT discovery.
+          After install, join <strong>Halo Hotspot</strong> and open
+          <a href="http://192.168.4.1">http://192.168.4.1</a>.
+          Choose erase when the installer asks, so the previous firmware’s partitions are cleared.
+        </p>
+        <p class="button-row">
+          <esp-web-install-button manifest="./firmware-lvgl/manifest.json">
+            <button slot="activate">Install LVGL</button>
+          </esp-web-install-button>
+        </p>
+      </section>
 
       <div class="footer">
         <a href="https://github.com/yashmulgaonkar/halo"
