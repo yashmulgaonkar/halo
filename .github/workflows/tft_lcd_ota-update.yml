@@ -8,6 +8,7 @@ on:
   push:
     paths:
       - 'TFT_LCD/**'
+      - 'TFT_LCD_LVGL/**'
       - '.github/workflows/tft_lcd_ota-update.yml'
       - 'static/**'
   workflow_dispatch:
@@ -43,6 +44,28 @@ jobs:
           fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "Resolved version: ${version}"
+
+  get-lvgl-version:
+    name: Resolve LVGL Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Resolve Version
+        id: resolve
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's/.*HALO_FW_VERSION "\([^"]*\)".*/\1/p' \
+            TFT_LCD_LVGL/T-Display-Long/V1/Firmware/include/halo_version.h)
+          if [ -z "${version}" ]; then
+            echo "Error: Could not resolve LVGL firmware version"
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Resolved LVGL version: ${version}"
 
   build-firmware:
     name: Build Firmware
@@ -93,6 +116,63 @@ jobs:
           path: TFT_LCD/T-Display-Long/V1/Firmware/ESPHome/artifacts/*
           if-no-files-found: error
 
+  build-lvgl:
+    name: Build LVGL Firmware
+    runs-on: ubuntu-latest
+    needs: get-lvgl-version
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+            ~/.platformio/packages
+            TFT_LCD_LVGL/T-Display-Long/V1/Firmware/.pio/libdeps
+          key: ${{ runner.os }}-pio-lvgl-${{ hashFiles('TFT_LCD_LVGL/T-Display-Long/V1/Firmware/platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-lvgl-
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build and merge a USB image
+        working-directory: TFT_LCD_LVGL/T-Display-Long/V1/Firmware
+        run: |
+          set -euo pipefail
+          pio run
+          BUILD=".pio/build/halo-tdisplay-s3-long"
+          BOOT_APP0="$(find "$HOME/.platformio/packages" -name boot_app0.bin | head -n1)"
+          ESPTOOL="$(find "$HOME/.platformio/packages/tool-esptoolpy" -name esptool.py | head -n1)"
+          if [ -z "${BOOT_APP0}" ] || [ -z "${ESPTOOL}" ]; then
+            echo "ERROR: Could not find boot_app0.bin or esptool.py"
+            exit 1
+          fi
+          python "$ESPTOOL" --chip esp32s3 merge_bin -o "$BUILD/firmware.factory.bin" \
+            --flash_mode qio --flash_freq 80m --flash_size 16MB \
+            0x0 "$BUILD/bootloader.bin" \
+            0x8000 "$BUILD/partitions.bin" \
+            0xe000 "$BOOT_APP0" \
+            0x10000 "$BUILD/firmware.bin"
+          mkdir -p artifacts
+          cp -v "$BUILD/firmware.factory.bin" artifacts/firmware.factory.bin
+          ls -la artifacts
+
+      - name: Upload LVGL Firmware Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-lvgl
+          path: TFT_LCD_LVGL/T-Display-Long/V1/Firmware/artifacts/*
+          if-no-files-found: error
+
   build-site:
     name: Build Site
     runs-on: ubuntu-latest
@@ -139,13 +219,42 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  create-lvgl-release:
+    name: Create LVGL GitHub Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - get-lvgl-version
+      - build-lvgl
+    permissions:
+      contents: write
+    steps:
+      - name: Download LVGL Firmware Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-lvgl
+          path: firmware-lvgl
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: lvgl-${{ needs.get-lvgl-version.outputs.version }}
+          name: LVGL ${{ needs.get-lvgl-version.outputs.version }}
+          body: Browser-flash image for the LVGL T-Display-Long firmware. The same file is on the installer.
+          files: firmware-lvgl/*
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish:
     name: Publish to GitHub Pages
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
       - get-version
+      - get-lvgl-version
       - build-firmware
+      - build-lvgl
       - build-site
     permissions:
       pages: write
@@ -165,6 +274,12 @@ jobs:
         with:
           name: site
           path: output
+
+      - name: Download LVGL Firmware Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-lvgl
+          path: output/firmware-lvgl
 
       - name: Generate Firmware Manifest
         working-directory: output/firmware
@@ -229,6 +344,40 @@ jobs:
           } > manifest.json
 
           echo "Generated manifest.json:"
+          cat manifest.json
+
+      - name: Generate LVGL Firmware Manifest
+        working-directory: output/firmware-lvgl
+        env:
+          VERSION: ${{ needs.get-lvgl-version.outputs.version }}
+          CHIP_FAMILY: ${{ env.CHIP_FAMILY }}
+        run: |
+          set -euo pipefail
+          if [ ! -f firmware.factory.bin ]; then
+            echo "ERROR: firmware.factory.bin is missing"
+            find . -type f -print
+            exit 1
+          fi
+          if [ -z "${VERSION}" ]; then
+            echo "ERROR: LVGL VERSION is empty"
+            exit 1
+          fi
+          {
+            echo '{'
+            echo '  "name": "HALO LVGL",'
+            echo '  "version": "'"${VERSION}"'",'
+            echo '  "new_install_prompt_erase": true,'
+            echo '  "builds": ['
+            echo '    {'
+            echo '      "chipFamily": "'"${CHIP_FAMILY}"'",'
+            echo '      "parts": ['
+            echo '        { "path": "firmware.factory.bin", "offset": 0 }'
+            echo '      ]'
+            echo '    }'
+            echo '  ]'
+            echo '}'
+          } > manifest.json
+          echo "Generated LVGL manifest.json:"
           cat manifest.json
 
       - name: Upload Pages Artifact

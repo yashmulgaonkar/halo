@@ -8,6 +8,14 @@ The screen is a vertical stack of three pages. Swipe, or tap BOOT, to move betwe
 2. **Gases** — CO, NO2, H2, methane, ethanol, ammonia, NOx, and pressure, each with the same color bands as the ESPHome UI.
 3. **Device** — firmware, network, and which sensors answered on the bus.
 
+## Install from the browser
+
+Chrome or Edge: [https://yashmulgaonkar.github.io/halo/](https://yashmulgaonkar.github.io/halo/). Choose **Install LVGL**. That writes a full image, including the bootloader and partition table. When the installer asks, erase the flash so an ESPHome layout is not left behind.
+
+After it boots with no Wi-Fi saved, join **Halo Hotspot** and open `http://192.168.4.1`.
+
+The same image is attached to the GitHub release tagged `lvgl-<version>` once it is built from `main`.
+
 ## Build and flash
 
 From this directory, with PlatformIO on `PATH`:
@@ -77,4 +85,4 @@ These ESPHome packages are not in this build:
 - Native ESPHome API. Home Assistant uses MQTT discovery instead.
 - BLE provisioning. The release ESPHome profile was already a stub. Use the hotspot page.
 - Optional weather-from-Home-Assistant and WireGuard packages.
-- The GitHub Pages ESPHome update channel. Those binaries are ESPHome images. This project updates with ArduinoOTA or `pio run -t upload`.
+- The ESPHome update channel at `firmware/manifest.json`. That file stays an ESPHome image so existing devices keep updating. This build is published separately at `firmware-lvgl/manifest.json` and is installed from the browser or with `pio run -t upload`. ArduinoOTA still uses the device hostname.

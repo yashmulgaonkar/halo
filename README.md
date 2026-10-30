@@ -49,6 +49,17 @@ HALO is built with a powerhouse of components designed to sniff out, measure, an
 
 ---
 
+## Install the firmware
+
+Use Chrome or Edge: [Halo Firmware Installer](https://yashmulgaonkar.github.io/halo/).
+
+- **ESPHome** is the original firmware. Home Assistant adopts it through the ESPHome integration.
+- **LVGL** is the newer screen firmware in [`TFT_LCD_LVGL`](TFT_LCD_LVGL/T-Display-Long/V1/Firmware/README.md). Home Assistant finds it through MQTT discovery. After flashing, join **Halo Hotspot** and open `http://192.168.4.1`.
+
+Plug the USB-C port into the computer. If the installer cannot see the board, hold BOOT, tap RST, and release BOOT.
+
+---
+
 ## Plug & Play? More Like Plug & Pray (Kidding — It’s Easy):
 
 1. **Power Up:** Plug HALO into a decent USB-C power brick. If HALO starts rebooting like it’s stuck in a bad WiFi loop, blame your cheap charger. HALO deserves better.
