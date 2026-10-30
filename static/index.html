@@ -108,29 +108,29 @@
       </p>
 
       <section class="choice">
-        <h2>ESPHome</h2>
+        <h2>HALO ESPHome firmware (old UI)</h2>
         <p>
-          The original firmware. Home Assistant adopts it through the ESPHome integration.
+          Home Assistant connects with the ESPHome integration.
           After install, join the HALO hotspot and enter your Wi-Fi.
         </p>
         <p class="button-row">
           <esp-web-install-button manifest="./firmware/manifest.json">
-            <button slot="activate">Install ESPHome</button>
+            <button slot="activate">Install HALO ESPHome firmware (old UI)</button>
           </esp-web-install-button>
         </p>
       </section>
 
       <section class="choice">
-        <h2>LVGL</h2>
+        <h2>HALO LVGL firmware (new UI)</h2>
         <p>
-          The newer screen firmware. Home Assistant finds it through MQTT discovery.
+          Updated screens on the device. Home Assistant connects with MQTT.
           After install, join <strong>Halo Hotspot</strong> and open
           <a href="http://192.168.4.1">http://192.168.4.1</a>.
           Choose erase when the installer asks, so the previous firmware’s partitions are cleared.
         </p>
         <p class="button-row">
           <esp-web-install-button manifest="./firmware-lvgl/manifest.json">
-            <button slot="activate">Install LVGL</button>
+            <button slot="activate">Install HALO LVGL firmware (new UI)</button>
           </esp-web-install-button>
         </p>
       </section>
