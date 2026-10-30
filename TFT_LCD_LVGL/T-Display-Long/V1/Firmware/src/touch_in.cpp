@@ -136,5 +136,6 @@ void touchBegin() {
   lv_indev_drv_init(&indev);
   indev.type = LV_INDEV_TYPE_POINTER;
   indev.read_cb = readCb;
+  indev.long_press_time = 600;
   lv_indev_drv_register(&indev);
 }

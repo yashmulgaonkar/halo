@@ -410,7 +410,7 @@ void HaloUi::buildDevice(lv_obj_t* tile) {
   devBody_ = text(body, "Starting", &lv_font_montserrat_14, kText);
   lv_label_set_long_mode(devBody_, LV_LABEL_LONG_WRAP);
   lv_obj_set_width(devBody_, lv_pct(100));
-  text(body, "Swipe left for the next page, right for the previous. Hold BOOT for 5 seconds to forget Wi-Fi.",
+  text(body, "Swipe left for the next page, right for the previous. Hold a temperature, humidity, or gas row to adjust its offset. Hold BOOT for 5 seconds to forget Wi-Fi.",
        &lv_font_montserrat_12, kMuted);
   lv_label_set_long_mode(lv_obj_get_child(body, -1), LV_LABEL_LONG_WRAP);
   lv_obj_set_width(lv_obj_get_child(body, -1), lv_pct(100));
@@ -568,7 +568,7 @@ void HaloUi::refresh(const UiStatus& status) {
 
 void HaloUi::watchTap(lv_obj_t* obj, int id) {
   lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_add_event_cb(obj, HaloUi::onTileTap, LV_EVENT_CLICKED, (void*)(intptr_t)id);
+  lv_obj_add_event_cb(obj, HaloUi::onTileTap, LV_EVENT_LONG_PRESSED, (void*)(intptr_t)id);
   uint32_t count = lv_obj_get_child_cnt(obj);
   for (uint32_t i = 0; i < count; i++) lv_obj_clear_flag(lv_obj_get_child(obj, i), LV_OBJ_FLAG_CLICKABLE);
 }

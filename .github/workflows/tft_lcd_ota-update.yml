@@ -239,8 +239,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: lvgl-${{ needs.get-lvgl-version.outputs.version }}
-          name: LVGL ${{ needs.get-lvgl-version.outputs.version }}
-          body: Browser-flash image for the LVGL T-Display-Long firmware. The same file is on the installer.
+          name: HALO LVGL firmware (new UI) ${{ needs.get-lvgl-version.outputs.version }}
+          body: Browser-flash image for HALO LVGL firmware (new UI). The same file is on the installer.
           files: firmware-lvgl/*
           fail_on_unmatched_files: true
         env:
@@ -321,7 +321,7 @@ jobs:
 
           {
             echo '{'
-            echo '  "name": "'"${DEVICE}"'.TFT-LCD",'
+            echo '  "name": "HALO ESPHome firmware (old UI)",'
             echo '  "version": "'"${VERSION}"'",'
             echo '  "home_assistant_domain": "esphome",'
             echo '  "new_install_prompt_erase": false,'
@@ -364,7 +364,7 @@ jobs:
           fi
           {
             echo '{'
-            echo '  "name": "HALO LVGL",'
+            echo '  "name": "HALO LVGL firmware (new UI)",'
             echo '  "version": "'"${VERSION}"'",'
             echo '  "new_install_prompt_erase": true,'
             echo '  "builds": ['

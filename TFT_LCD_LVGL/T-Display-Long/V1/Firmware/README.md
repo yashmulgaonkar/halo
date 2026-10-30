@@ -2,7 +2,7 @@
 
 Portrait firmware for the [LilyGO T-Display-S3-Long](https://github.com/Xinyuan-LilyGO/T-Display-S3-Long) (ESP32-S3, 180×640). It replaces the ESPHome package in `TFT_LCD/T-Display-Long/V1/Firmware/ESPHome` with a PlatformIO build: LVGL on the panel, the same sensor set, and MQTT discovery so Home Assistant still receives the readings.
 
-The screen is a vertical stack of three pages. Swipe, or tap BOOT, to move between them.
+The screen is a vertical stack of three pages. Swipe, or tap BOOT, to move between them. Hold a temperature, humidity, or gas row to adjust its offset, then tap outside the panel to close it.
 
 1. **Air** — AQI category and color, temperature, humidity, CO2, particles, VOC.
 2. **Gases** — CO, NO2, H2, methane, ethanol, ammonia, NOx, and pressure, each with the same color bands as the ESPHome UI.
@@ -10,7 +10,7 @@ The screen is a vertical stack of three pages. Swipe, or tap BOOT, to move betwe
 
 ## Install from the browser
 
-Chrome or Edge: [https://yashmulgaonkar.github.io/halo/](https://yashmulgaonkar.github.io/halo/). Choose **Install LVGL**. That writes a full image, including the bootloader and partition table. When the installer asks, erase the flash so an ESPHome layout is not left behind.
+Chrome or Edge: [https://yashmulgaonkar.github.io/halo/](https://yashmulgaonkar.github.io/halo/). Choose **Install HALO LVGL firmware (new UI)**. That writes a full image, including the bootloader and partition table. When the installer asks, erase the flash so an ESPHome layout is not left behind.
 
 After it boots with no Wi-Fi saved, join **Halo Hotspot** and open `http://192.168.4.1`.
 
