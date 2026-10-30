@@ -54,7 +54,7 @@ HALO is built with a powerhouse of components designed to sniff out, measure, an
 Use Chrome or Edge: [Halo Firmware Installer](https://yashmulgaonkar.github.io/halo/).
 
 - **HALO ESPHome firmware (old UI)** keeps the ESPHome connection to Home Assistant.
-- **HALO LVGL firmware (new UI)** is the updated on-device screens in [`TFT_LCD_LVGL`](TFT_LCD_LVGL/T-Display-Long/V1/Firmware/README.md). Home Assistant connects with MQTT. After flashing, join **Halo Hotspot** and open `http://192.168.4.1`.
+- **HALO LVGL firmware (new UI)** is the updated on-device screens in [`TFT_LCD_LVGL`](TFT_LCD_LVGL/T-Display-Long/V1/Firmware/README.md). Home Assistant connects with MQTT. After flashing, join **Halo Hotspot** and open `http://192.168.4.1`. Later Wi-Fi updates are on the device portal and in Home Assistant.
 
 Plug the USB-C port into the computer. If the installer cannot see the board, hold BOOT, tap RST, and release BOOT.
 

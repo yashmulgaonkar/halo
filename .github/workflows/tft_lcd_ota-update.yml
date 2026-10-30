@@ -164,6 +164,7 @@ jobs:
             0x10000 "$BUILD/firmware.bin"
           mkdir -p artifacts
           cp -v "$BUILD/firmware.factory.bin" artifacts/firmware.factory.bin
+          cp -v "$BUILD/firmware.bin" artifacts/firmware.bin
           ls -la artifacts
 
       - name: Upload LVGL Firmware Artifact
@@ -240,7 +241,7 @@ jobs:
         with:
           tag_name: lvgl-${{ needs.get-lvgl-version.outputs.version }}
           name: HALO LVGL firmware (new UI) ${{ needs.get-lvgl-version.outputs.version }}
-          body: Browser-flash image for HALO LVGL firmware (new UI). The same file is on the installer.
+          body: Browser-flash image for HALO LVGL firmware (new UI). firmware.bin is the Wi-Fi update used by the device portal and Home Assistant. The same files are on the installer.
           files: firmware-lvgl/*
           fail_on_unmatched_files: true
         env:
@@ -353,8 +354,8 @@ jobs:
           CHIP_FAMILY: ${{ env.CHIP_FAMILY }}
         run: |
           set -euo pipefail
-          if [ ! -f firmware.factory.bin ]; then
-            echo "ERROR: firmware.factory.bin is missing"
+          if [ ! -f firmware.factory.bin ] || [ ! -f firmware.bin ]; then
+            echo "ERROR: firmware.factory.bin or firmware.bin is missing"
             find . -type f -print
             exit 1
           fi
@@ -362,6 +363,7 @@ jobs:
             echo "ERROR: LVGL VERSION is empty"
             exit 1
           fi
+          printf '%s\n' "${VERSION}" > version.txt
           {
             echo '{'
             echo '  "name": "HALO LVGL firmware (new UI)",'

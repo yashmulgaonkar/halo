@@ -42,7 +42,7 @@ With no Wi-Fi saved, the device opens a hotspot named **Halo Hotspot**. Join it 
 
 Hold BOOT for 5 seconds to forget Wi-Fi and return to that hotspot.
 
-After it joins Wi-Fi, the same page is at `http://halo-xxxxxx.local/` (the last three bytes of the MAC). `/api/state` returns the latest readings as JSON. ArduinoOTA uses the same hostname.
+After it joins Wi-Fi, the same page is at `http://halo-xxxxxx.local/` (the last three bytes of the MAC). **Update firmware** checks [the installer site](https://yashmulgaonkar.github.io/halo/firmware-lvgl/version.txt) and, when that version is newer, downloads the app image over Wi-Fi. Home Assistant shows the same install on the device’s firmware update. `/api/state` returns the latest readings as JSON. ArduinoOTA uses the same hostname.
 
 Timezone is a POSIX string. The default is US Pacific: `PST8PDT,M3.2.0,M11.1.0`.
 
@@ -85,4 +85,4 @@ These ESPHome packages are not in this build:
 - Native ESPHome API. Home Assistant uses MQTT discovery instead.
 - BLE provisioning. The release ESPHome profile was already a stub. Use the hotspot page.
 - Optional weather-from-Home-Assistant and WireGuard packages.
-- The ESPHome update channel at `firmware/manifest.json`. That file stays an ESPHome image so existing devices keep updating. This build is published separately at `firmware-lvgl/manifest.json` and is installed from the browser or with `pio run -t upload`. ArduinoOTA still uses the device hostname.
+- The ESPHome update channel at `firmware/manifest.json`. That file stays an ESPHome image so existing devices keep updating. This build is published at `firmware-lvgl/`. `firmware.factory.bin` is the USB image. `firmware.bin` and `version.txt` are the Wi-Fi update used by the device portal and Home Assistant. ArduinoOTA still uses the device hostname.

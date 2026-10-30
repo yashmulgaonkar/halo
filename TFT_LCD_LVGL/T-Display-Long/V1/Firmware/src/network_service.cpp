@@ -2,10 +2,16 @@
 
 #include <ESPmDNS.h>
 #include <ArduinoOTA.h>
+#include <HTTPClient.h>
+#include <HTTPUpdate.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
+#include "pages_ca.h"
 
 #include "aqi.h"
 #include "backlight.h"
@@ -56,6 +62,64 @@ const SensorEnt kSensors[] = {
 
 void copyField(char* dst, size_t n, const String& src) {
   strncpy(dst, src.c_str(), n - 1);
+  dst[n - 1] = 0;
+}
+
+const char kVersionUrl[] = "https://yashmulgaonkar.github.io/halo/firmware-lvgl/version.txt";
+const char kFirmwareUrl[] = "https://yashmulgaonkar.github.io/halo/firmware-lvgl/firmware.bin";
+
+bool clockReady() {
+  return time(nullptr) > 1704067200;
+}
+
+void trimInPlace(char* text) {
+  char* start = text;
+  while (*start == ' ' || *start == '\t' || *start == '\r' || *start == '\n') start++;
+  if (start != text) memmove(text, start, strlen(start) + 1);
+  size_t n = strlen(text);
+  while (n > 0 && (text[n - 1] == ' ' || text[n - 1] == '\t' || text[n - 1] == '\r' || text[n - 1] == '\n')) {
+    text[--n] = 0;
+  }
+}
+
+bool validVersion(const char* text) {
+  if (text == nullptr || text[0] == 0) return false;
+  int dots = 0;
+  int digits = 0;
+  for (const char* p = text; *p; p++) {
+    if (p - text > 20) return false;
+    if (*p == '.') {
+      if (digits == 0) return false;
+      dots++;
+      digits = 0;
+    } else if (*p >= '0' && *p <= '9') {
+      if (++digits > 6) return false;
+    } else {
+      return false;
+    }
+  }
+  return dots >= 1 && digits > 0;
+}
+
+int cmpVersion(const char* left, const char* right) {
+  const char* a = left == nullptr ? "" : left;
+  const char* b = right == nullptr ? "" : right;
+  for (int i = 0; i < 4; i++) {
+    char* end = nullptr;
+    long av = strtol(a, &end, 10);
+    a = end == nullptr ? a : end;
+    long bv = strtol(b, &end, 10);
+    b = end == nullptr ? b : end;
+    if (av != bv) return av > bv ? 1 : -1;
+    if (*a == '.') a++;
+    if (*b == '.') b++;
+  }
+  return 0;
+}
+
+void copyNote(char* dst, size_t n, const char* src) {
+  if (src == nullptr) src = "";
+  strncpy(dst, src, n - 1);
   dst[n - 1] = 0;
 }
 
@@ -300,6 +364,7 @@ void NetworkService::begin() {
   server_.on("/save", HTTP_POST, [this]() { handleSave(); });
   server_.on("/ring", HTTP_POST, [this]() { handleRing(); });
   server_.on("/api/state", HTTP_GET, [this]() { handleApi(); });
+  server_.on("/update", HTTP_POST, [this]() { handleUpdate(); });
   server_.on("/reboot", HTTP_POST, [this]() {
     server_.send(200, "text/html", "<p>Restarting.</p>");
     reboot_ = true;
@@ -350,6 +415,7 @@ void NetworkService::onStaReady() {
   ArduinoOTA.setHostname(hostname_);
   ArduinoOTA.onStart([]() { ring().suspend(true); });
   ArduinoOTA.begin();
+  updateReadyMs_ = millis();
   stopAp();
 }
 
@@ -560,6 +626,33 @@ void NetworkService::publishDiscovery() {
 
   {
     JsonDocument doc;
+    doc["name"] = "Firmware";
+    doc["device_class"] = "firmware";
+    char uid[48];
+    snprintf(uid, sizeof(uid), "%s_fw_update", deviceId_);
+    doc["unique_id"] = uid;
+    char state[64];
+    snprintf(state, sizeof(state), "%s/update", root_);
+    doc["state_topic"] = state;
+    doc["value_template"] = "{{ value_json.installed_version }}";
+    doc["latest_version_topic"] = state;
+    doc["latest_version_template"] = "{{ value_json.latest_version }}";
+    char cmd[80];
+    snprintf(cmd, sizeof(cmd), "%s/cmd/update/install", root_);
+    doc["command_topic"] = cmd;
+    doc["payload_install"] = "INSTALL";
+    doc["availability_topic"] = statusTopic_;
+    addDevice(doc);
+    char config[96];
+    snprintf(config, sizeof(config), "homeassistant/update/%s/firmware/config", deviceId_);
+    char body[1200];
+    size_t n = serializeJson(doc, body, sizeof(body));
+    if (n > 0 && n < sizeof(body)) mqtt_.publish(config, body, true);
+    displayPump();
+  }
+
+  {
+    JsonDocument doc;
     doc["name"] = "Halo";
     char uid[48];
     snprintf(uid, sizeof(uid), "%s_ring", deviceId_);
@@ -638,6 +731,7 @@ void NetworkService::publishStates() {
   mqtt_.publish(topic, r.senOk ? r.vocQuality : "unavailable", true);
   snprintf(topic, sizeof(topic), "%s/text/firmware_version", root_);
   mqtt_.publish(topic, HALO_FW_VERSION, true);
+  publishFirmwareUpdate();
 
   const Settings& cfg = settings();
   auto pubSwitch = [&](const char* key, bool on) {
@@ -796,6 +890,8 @@ void NetworkService::handleCmd(const char* cmd, const char* body) {
     sensors().requestCalibration(ppm);
   } else if (strcmp(cmd, "button/sen55_clean") == 0) {
     sensors().requestFanClean();
+  } else if (strcmp(cmd, "update/install") == 0) {
+    if (strcmp(body, "INSTALL") == 0 && !updating_) installRequested_ = true;
   } else if (strcmp(cmd, "ring") == 0) {
     if (body[0] != '{') {
       ring().setPower(isOn(body));
@@ -920,7 +1016,7 @@ void NetworkService::sendStatus() {
   const Readings& r = sensors().latest();
   const Settings& cfg = settings();
   String page;
-  page.reserve(12000);
+  page.reserve(14000);
   portalOpen(page, "HALO", true);
   page += "<header><div><h1>HALO</h1><p class=sub>";
   page += htmlEscape(hostname_);
@@ -1016,6 +1112,28 @@ void NetworkService::sendStatus() {
   metric(page, particle.c_str(), r.senPresent ? "ok" : "missing", "PM / VOC", r.senPresent ? "#3ddc97" : "#f07167");
   metric(page, "BME280", r.bmePresent ? "ok" : "missing", "pressure", r.bmePresent ? "#3ddc97" : "#f07167");
   metric(page, "MICS-4514", mics, "gases", micsColor);
+  page += "</section><h2>FIRMWARE</h2><section class=panel>";
+  page += "<p>Running ";
+  page += HALO_FW_VERSION;
+  page += ".</p>";
+  if (updateKnown_) {
+    page += "<p class=sub>Site version ";
+    page += htmlEscape(latestVersion_);
+    page += ". ";
+    int cmp = cmpVersion(latestVersion_, HALO_FW_VERSION);
+    if (cmp > 0) page += "A newer build is ready.";
+    else if (cmp < 0) page += "This device is newer than the site.";
+    else page += "This build matches the site.";
+    page += "</p>";
+  } else if (updateNote_[0] == 0) {
+    page += "<p class=sub>The site version has not been read yet.</p>";
+  }
+  if (updateNote_[0]) {
+    page += "<p class=sub>";
+    page += htmlEscape(updateNote_);
+    page += "</p>";
+  }
+  page += "<form class=actions method=post action=/update onsubmit=\"return confirm('Download the firmware from the site and restart HALO?')\"><button>Update firmware</button></form>";
   page += "</section><h2>RING</h2>";
   appendRingForm(page);
   page += "<div class=actions>";
@@ -1051,10 +1169,162 @@ void NetworkService::handleSave() {
   reboot_ = true;
 }
 
+void NetworkService::sendUpdatePage(const char* heading, const char* message) {
+  String page;
+  page.reserve(2500);
+  portalOpen(page, "HALO", false);
+  page += "<header><div><h1>HALO</h1></div></header><section class=panel><h2>";
+  page += heading;
+  page += "</h2><p>";
+  page += htmlEscape(message);
+  page += "</p><p class=sub><a href=/>Back to live readings</a></p></section>";
+  portalClose(page);
+  server_.send(200, "text/html", page);
+}
+
+void NetworkService::refreshLatest() {
+  if (!clockReady()) {
+    if (!updateKnown_) copyNote(updateNote_, sizeof(updateNote_), "Waiting for the clock before checking the site.");
+    return;
+  }
+  char url[128];
+  snprintf(url, sizeof(url), "%s?t=%lu", kVersionUrl, (unsigned long)millis());
+  WiFiClientSecure client;
+  client.setCACert(kPagesCa);
+  client.setHandshakeTimeout(20000);
+  client.setTimeout(20);
+  HTTPClient http;
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+  http.setTimeout(20000);
+  if (!http.begin(client, url)) {
+    if (!updateKnown_) copyNote(updateNote_, sizeof(updateNote_), "Could not start the version check.");
+    return;
+  }
+  int code = http.GET();
+  int len = http.getSize();
+  if (code == 404) {
+    http.end();
+    if (!updateKnown_) copyNote(updateNote_, sizeof(updateNote_), "The site does not have a Wi-Fi firmware yet.");
+    return;
+  }
+  if (code != 200 || len <= 0 || len > 32) {
+    http.end();
+    if (!updateKnown_) copyNote(updateNote_, sizeof(updateNote_), "Could not read the firmware version on the site.");
+    return;
+  }
+  char body[40];
+  int got = http.getStreamPtr()->readBytes(body, len);
+  http.end();
+  if (got != len) {
+    if (!updateKnown_) copyNote(updateNote_, sizeof(updateNote_), "Could not read the firmware version on the site.");
+    return;
+  }
+  body[got] = 0;
+  trimInPlace(body);
+  if (!validVersion(body)) {
+    if (!updateKnown_) copyNote(updateNote_, sizeof(updateNote_), "The site version was not usable.");
+    return;
+  }
+  strncpy(latestVersion_, body, sizeof(latestVersion_) - 1);
+  latestVersion_[sizeof(latestVersion_) - 1] = 0;
+  updateKnown_ = true;
+  updateNote_[0] = 0;
+  Serial.printf("Firmware site version %s\n", latestVersion_);
+  if (mqtt_.connected()) publishFirmwareUpdate();
+}
+
+void NetworkService::installFirmware() {
+  if (updating_ || !wifiConnected()) return;
+  updating_ = true;
+  refreshLatest();
+  if (!updateKnown_ || cmpVersion(latestVersion_, HALO_FW_VERSION) <= 0) {
+    updating_ = false;
+    if (mqtt_.connected()) publishFirmwareUpdate();
+    if (updateKnown_) {
+      copyNote(updateNote_, sizeof(updateNote_), cmpVersion(latestVersion_, HALO_FW_VERSION) < 0
+                                                         ? "This device is newer than the site."
+                                                         : "This firmware is current.");
+    }
+    return;
+  }
+  char url[160];
+  snprintf(url, sizeof(url), "%s?v=%s", kFirmwareUrl, latestVersion_);
+  Serial.printf("Firmware download %s\n", url);
+  if (mqtt_.connected()) mqtt_.disconnect();
+  ring().suspend(true);
+  WiFiClientSecure client;
+  client.setCACert(kPagesCa);
+  client.setHandshakeTimeout(20000);
+  client.setTimeout(180);
+  HTTPUpdate updater(180000);
+  updater.rebootOnUpdate(true);
+  updater.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+  HTTPUpdateResult result = updater.update(client, url);
+  ring().suspend(false);
+  updating_ = false;
+  if (result != HTTP_UPDATE_OK) {
+    String err = updater.getLastErrorString();
+    if (err.length() == 0) err = "The download did not finish.";
+    copyNote(updateNote_, sizeof(updateNote_), err.c_str());
+    Serial.printf("Firmware update failed: %s\n", updateNote_);
+  }
+}
+
+void NetworkService::publishFirmwareUpdate() {
+  if (!mqtt_.connected()) return;
+  JsonDocument doc;
+  doc["installed_version"] = HALO_FW_VERSION;
+  const char* latest = HALO_FW_VERSION;
+  if (updateKnown_ && cmpVersion(latestVersion_, HALO_FW_VERSION) > 0) latest = latestVersion_;
+  doc["latest_version"] = latest;
+  doc["title"] = "HALO LVGL firmware (new UI)";
+  if (strcmp(latest, HALO_FW_VERSION) != 0) {
+    char rel[96];
+    snprintf(rel, sizeof(rel), "https://github.com/yashmulgaonkar/halo/releases/tag/lvgl-%s", latest);
+    doc["release_url"] = rel;
+  }
+  char topic[64];
+  snprintf(topic, sizeof(topic), "%s/update", root_);
+  char body[384];
+  size_t n = serializeJson(doc, body, sizeof(body));
+  if (n > 0 && n < sizeof(body)) mqtt_.publish(topic, body, true);
+}
+
+void NetworkService::handleUpdate() {
+  if (updating_ || installRequested_) {
+    sendUpdatePage("FIRMWARE", "An update is already running.");
+    return;
+  }
+  refreshLatest();
+  if (!updateKnown_) {
+    sendUpdatePage("FIRMWARE", updateNote_[0] ? updateNote_ : "Could not read the firmware version on the site.");
+    return;
+  }
+  if (cmpVersion(latestVersion_, HALO_FW_VERSION) <= 0) {
+    sendUpdatePage("FIRMWARE", cmpVersion(latestVersion_, HALO_FW_VERSION) < 0
+                                   ? "This device is newer than the site."
+                                   : "This firmware is current.");
+    return;
+  }
+  sendUpdatePage("FIRMWARE", "Downloading the site firmware. Leave HALO powered. It restarts when the install finishes, then reopen this page.");
+  delay(200);
+  server_.client().stop();
+  installRequested_ = true;
+}
+
 void NetworkService::handleApi() {
   const Readings& r = sensors().latest();
   JsonDocument doc;
   doc["firmware"] = HALO_FW_VERSION;
+  if (updateKnown_) doc["firmware_latest"] = latestVersion_;
+  const char* updateState = "unknown";
+  if (updateKnown_) {
+    int cmp = cmpVersion(latestVersion_, HALO_FW_VERSION);
+    if (cmp > 0) updateState = "available";
+    else if (cmp < 0) updateState = "ahead";
+    else updateState = "current";
+  }
+  doc["firmware_update"] = updateState;
   doc["ip"] = ip_;
   doc["wifi"] = wifiConnected();
   doc["mqtt"] = mqtt_.connected();
@@ -1087,12 +1357,23 @@ void NetworkService::handleApi() {
 void NetworkService::loop() {
   if (apOn_) dns_.processNextRequest();
   server_.handleClient();
+  if (installRequested_ && !updating_) {
+    installRequested_ = false;
+    installFirmware();
+  }
 
   if (wifiConnected()) {
     if (!staReady_) onStaReady();
     wifiDownSince_ = 0;
     wifiRetryMs_ = millis();
     ArduinoOTA.handle();
+    uint32_t nowCheck = millis();
+    uint32_t period = updateKnown_ ? 21600000UL : 60000UL;
+    if (!updating_ && updateReadyMs_ != 0 && nowCheck - updateReadyMs_ > 15000 &&
+        (lastUpdateCheckMs_ == 0 || nowCheck - lastUpdateCheckMs_ >= period)) {
+      lastUpdateCheckMs_ = nowCheck;
+      refreshLatest();
+    }
   } else {
     staReady_ = false;
     wl_status_t st = WiFi.status();

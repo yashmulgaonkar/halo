@@ -35,7 +35,12 @@ class NetworkService {
   void appendRingForm(String& page);
   void handleSave();
   void handleRing();
+  void handleUpdate();
   void handleApi();
+  void refreshLatest();
+  void installFirmware();
+  void publishFirmwareUpdate();
+  void sendUpdatePage(const char* heading, const char* message);
   bool publish(const char* topic, const char* payload, bool retain);
   void addDevice(JsonDocument& doc);
   static void mqttTrampoline(char* topic, uint8_t* payload, unsigned int length);
@@ -58,11 +63,18 @@ class NetworkService {
   bool apOn_ = false;
   bool reboot_ = false;
   bool discoverySent_ = false;
+  bool updateKnown_ = false;
+  bool installRequested_ = false;
+  bool updating_ = false;
   uint32_t lastMqttTryMs_ = 0;
   uint32_t lastStateMs_ = 0;
   uint32_t lastDiscoveryMs_ = 0;
   uint32_t wifiDownSince_ = 0;
   uint32_t wifiRetryMs_ = 0;
+  uint32_t lastUpdateCheckMs_ = 0;
+  uint32_t updateReadyMs_ = 0;
+  char latestVersion_[24] = {};
+  char updateNote_[120] = {};
   uint8_t publishedBacklight_ = 255;
 };
 
