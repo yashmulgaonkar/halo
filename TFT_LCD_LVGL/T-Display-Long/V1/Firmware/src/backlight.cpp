@@ -24,10 +24,16 @@ void Backlight::begin() {
 
 void Backlight::setLevel(uint8_t level) {
   level_ = level;
+  refresh(false);
+}
+
+void Backlight::refresh(bool reattach) {
   if (!ready_) return;
 #if ESP_ARDUINO_VERSION_MAJOR >= 3
+  if (reattach) ready_ = ledcAttach(PIN_LCD_BL, 5000, 8);
   ledcWrite(PIN_LCD_BL, level_);
 #else
+  if (reattach) ledcAttachPin(PIN_LCD_BL, kChannel);
   ledcWrite(kChannel, level_);
 #endif
 }

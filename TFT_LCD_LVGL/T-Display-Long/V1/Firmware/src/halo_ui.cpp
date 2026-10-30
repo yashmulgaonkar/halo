@@ -58,6 +58,24 @@ lv_obj_t* card(lv_obj_t* parent, lv_coord_t height) {
   return obj;
 }
 
+lv_obj_t* statusRail(lv_obj_t* parent) {
+  lv_obj_t* bar = lv_obj_create(parent);
+  lv_obj_set_size(bar, 4, lv_pct(68));
+  lv_obj_add_flag(bar, LV_OBJ_FLAG_IGNORE_LAYOUT);
+  // Sit in the left padding, clear of the text that starts at the content edge.
+  lv_obj_align(bar, LV_ALIGN_LEFT_MID, -12, 0);
+  lv_obj_set_style_radius(bar, 3, 0);
+  lv_obj_set_style_border_width(bar, 0, 0);
+  lv_obj_set_style_bg_color(bar, hex(kMuted), 0);
+  lv_obj_clear_flag(bar, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+  return bar;
+}
+
+void pinLeft(lv_obj_t* obj, lv_coord_t y) {
+  lv_obj_add_flag(obj, LV_OBJ_FLAG_IGNORE_LAYOUT);
+  lv_obj_align(obj, LV_ALIGN_LEFT_MID, 6, y);
+}
+
 lv_obj_t* text(lv_obj_t* parent, const char* value, const lv_font_t* font, uint32_t color) {
   lv_obj_t* label = lv_label_create(parent);
   lv_label_set_text(label, value);
@@ -127,9 +145,12 @@ void HaloUi::updateDots() {
 void HaloUi::showPage(int page) {
   if (page < 0) page = 2;
   if (page > 2) page = 0;
+  // Neighbors slide. Wrapping from the last page to the first would travel
+  // through the page in between, so that jump stays a snap.
+  int distance = page - page_;
+  if (distance < 0) distance = -distance;
   page_ = page;
-  // Snap. A sliding animation redraws the whole panel on every frame.
-  if (tv_) lv_obj_set_tile_id(tv_, 0, page_, LV_ANIM_OFF);
+  if (tv_) lv_obj_set_tile_id(tv_, page_, 0, distance == 1 ? LV_ANIM_ON : LV_ANIM_OFF);
   lastAutoMs_ = millis();
   updateDots();
 }
@@ -177,8 +198,8 @@ void HaloUi::begin() {
   // Finger drags are handled as a completed swipe. Live scrolling fights the
   // full-screen refresh, so the tiles do not scroll under the finger.
   tiles_[0] = lv_tileview_add_tile(tv_, 0, 0, LV_DIR_NONE);
-  tiles_[1] = lv_tileview_add_tile(tv_, 0, 1, LV_DIR_NONE);
-  tiles_[2] = lv_tileview_add_tile(tv_, 0, 2, LV_DIR_NONE);
+  tiles_[1] = lv_tileview_add_tile(tv_, 1, 0, LV_DIR_NONE);
+  tiles_[2] = lv_tileview_add_tile(tv_, 2, 0, LV_DIR_NONE);
   for (int i = 0; i < 3; i++) styleTile(tiles_[i]);
 
   buildAir(tiles_[0]);
@@ -274,65 +295,68 @@ void HaloUi::buildAir(lv_obj_t* tile) {
   lv_obj_clear_flag(climate, LV_OBJ_FLAG_SCROLLABLE);
 
   lv_obj_t* temp = card(climate, 74);
-  lv_obj_set_width(temp, 78);
+  lv_obj_set_width(temp, 80);
+  lv_obj_set_style_pad_left(temp, 16, 0);
+  tempRail_ = statusRail(temp);
   lv_obj_set_flex_flow(temp, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(temp, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  text(temp, "TEMP", &lv_font_montserrat_12, kMuted);
+  lv_obj_t* tempTag = text(temp, "TEMP", &lv_font_montserrat_12, kMuted);
+  lv_obj_set_style_translate_y(tempTag, 8, 0);
   tempValue_ = text(temp, "--", &lv_font_montserrat_28, kText);
   tempUnit_ = text(temp, "F", &lv_font_montserrat_12, kMuted);
   watchTap(temp, 0);
 
   lv_obj_t* hum = card(climate, 74);
   lv_obj_set_width(hum, 78);
+  lv_obj_set_style_pad_left(hum, 16, 0);
+  humRail_ = statusRail(hum);
   lv_obj_set_flex_flow(hum, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(hum, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  text(hum, "HUMIDITY", &lv_font_montserrat_12, kMuted);
+  lv_obj_t* humTag = text(hum, "HUMIDITY", &lv_font_montserrat_12, kMuted);
+  lv_obj_set_style_translate_y(humTag, 8, 0);
   humValue_ = text(hum, "--", &lv_font_montserrat_28, kText);
   text(hum, "%", &lv_font_montserrat_12, kMuted);
   watchTap(hum, 1);
 
   lv_obj_t* pressure = card(tile, 50);
-  lv_obj_set_flex_flow(pressure, LV_FLEX_FLOW_ROW);
-  lv_obj_set_flex_align(pressure, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  text(pressure, "PRES", &lv_font_montserrat_14, kMuted);
+  lv_obj_set_style_pad_left(pressure, 16, 0);
+  presRail_ = statusRail(pressure);
+  pinLeft(text(pressure, "PRES", &lv_font_montserrat_14, kMuted), -9);
+  pinLeft(text(pressure, "hPa", &lv_font_montserrat_12, kMuted), 9);
   pressureValue_ = text(pressure, "--", &lv_font_montserrat_28, kText);
-  text(pressure, "hPa", &lv_font_montserrat_12, kMuted);
+  lv_obj_add_flag(pressureValue_, LV_OBJ_FLAG_IGNORE_LAYOUT);
+  lv_obj_align(pressureValue_, LV_ALIGN_RIGHT_MID, -2, 0);
 
   lv_obj_t* co2 = card(tile, 52);
-  lv_obj_set_flex_flow(co2, LV_FLEX_FLOW_ROW);
-  lv_obj_set_flex_align(co2, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  text(co2, "CO2", &lv_font_montserrat_14, kMuted);
+  lv_obj_set_style_pad_left(co2, 16, 0);
+  co2Rail_ = statusRail(co2);
+  pinLeft(text(co2, "CO2", &lv_font_montserrat_14, kMuted), -9);
+  pinLeft(text(co2, "ppm", &lv_font_montserrat_12, kMuted), 9);
   co2Value_ = text(co2, "--", &lv_font_montserrat_28, kText);
-  text(co2, "ppm", &lv_font_montserrat_12, kMuted);
+  lv_obj_add_flag(co2Value_, LV_OBJ_FLAG_IGNORE_LAYOUT);
+  lv_obj_align(co2Value_, LV_ALIGN_RIGHT_MID, -2, 0);
 
   const char* pmNames[] = {"PM1", "PM2.5", "PM4", "PM10"};
   for (int i = 0; i < 4; i++) {
     lv_obj_t* row = card(tile, 48);
-    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_left(row, 12, 0);
-    lv_obj_set_style_pad_right(row, 12, 0);
-    text(row, pmNames[i], &lv_font_montserrat_14, kMuted);
+    lv_obj_set_style_pad_left(row, 16, 0);
+    pmRail_[i] = statusRail(row);
+    pinLeft(text(row, pmNames[i], &lv_font_montserrat_14, kMuted), -9);
+    pinLeft(text(row, "ug/m3", &lv_font_montserrat_12, kMuted), 9);
     pmValue_[i] = text(row, "--", &lv_font_montserrat_28, kText);
-    text(row, "ug/m3", &lv_font_montserrat_12, kMuted);
+    lv_obj_add_flag(pmValue_[i], LV_OBJ_FLAG_IGNORE_LAYOUT);
+    lv_obj_align(pmValue_[i], LV_ALIGN_RIGHT_MID, -2, 0);
   }
 
   lv_obj_t* voc = card(tile, 58);
-  lv_obj_set_flex_flow(voc, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_flex_align(voc, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-  lv_obj_set_style_pad_row(voc, 0, 0);
-  text(voc, "VOC INDEX", &lv_font_montserrat_12, kMuted);
-  lv_obj_t* vocRow = lv_obj_create(voc);
-  lv_obj_set_width(vocRow, lv_pct(100));
-  lv_obj_set_height(vocRow, 28);
-  lv_obj_set_style_bg_opa(vocRow, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_border_width(vocRow, 0, 0);
-  lv_obj_set_style_pad_all(vocRow, 0, 0);
-  lv_obj_set_flex_flow(vocRow, LV_FLEX_FLOW_ROW);
-  lv_obj_set_flex_align(vocRow, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  lv_obj_clear_flag(vocRow, LV_OBJ_FLAG_SCROLLABLE);
-  vocValue_ = text(vocRow, "--", &lv_font_montserrat_28, kText);
-  vocWord_ = text(vocRow, "--", &lv_font_montserrat_14, kMuted);
+  lv_obj_set_style_pad_left(voc, 16, 0);
+  vocRail_ = statusRail(voc);
+  pinLeft(text(voc, "VOC INDEX", &lv_font_montserrat_12, kMuted), -9);
+  vocWord_ = text(voc, "--", &lv_font_montserrat_14, kMuted);
+  pinLeft(vocWord_, 9);
+  vocValue_ = text(voc, "--", &lv_font_montserrat_28, kText);
+  lv_obj_add_flag(vocValue_, LV_OBJ_FLAG_IGNORE_LAYOUT);
+  lv_obj_align(vocValue_, LV_ALIGN_RIGHT_MID, -2, 0);
 }
 
 void HaloUi::buildGases(lv_obj_t* tile) {
@@ -345,18 +369,18 @@ void HaloUi::buildGases(lv_obj_t* tile) {
   const char* units[] = {"ppm", "ppm", "ppm", "ppm", "ppm", "ppm", "idx"};
   for (int i = 0; i < 7; i++) {
     lv_obj_t* row = card(tile, 58);
-    lv_obj_set_style_pad_left(row, 14, 0);
+    lv_obj_set_style_pad_left(row, 16, 0);
     gasPip_[i] = lv_obj_create(row);
-    lv_obj_set_size(gasPip_[i], 5, 28);
+    lv_obj_set_size(gasPip_[i], 4, lv_pct(68));
     lv_obj_add_flag(gasPip_[i], LV_OBJ_FLAG_IGNORE_LAYOUT);
-    lv_obj_align(gasPip_[i], LV_ALIGN_LEFT_MID, 0, 0);
+    lv_obj_align(gasPip_[i], LV_ALIGN_LEFT_MID, -12, 0);
     lv_obj_set_style_radius(gasPip_[i], 3, 0);
     lv_obj_set_style_border_width(gasPip_[i], 0, 0);
     lv_obj_set_style_bg_color(gasPip_[i], hex(0x2C3544), 0);
     text(row, names[i], &lv_font_montserrat_12, kMuted);
-    lv_obj_align(lv_obj_get_child(row, 1), LV_ALIGN_LEFT_MID, 12, -10);
+    lv_obj_align(lv_obj_get_child(row, 1), LV_ALIGN_LEFT_MID, 6, -10);
     text(row, units[i], &lv_font_montserrat_12, kMuted);
-    lv_obj_align(lv_obj_get_child(row, 2), LV_ALIGN_LEFT_MID, 12, 10);
+    lv_obj_align(lv_obj_get_child(row, 2), LV_ALIGN_LEFT_MID, 6, 10);
     gasValue_[i] = text(row, "--", &lv_font_montserrat_28, kText);
     lv_obj_align(gasValue_[i], LV_ALIGN_RIGHT_MID, -4, 0);
     watchTap(row, 2 + i);
@@ -420,33 +444,55 @@ void HaloUi::refresh(const UiStatus& status) {
 
   lv_label_set_text(tempUnit_, unitSuffix(status.tempUnit));
   if (r.senOk) {
+    lv_color_t temp = tempColor(r.senTempC);
     lv_label_set_text_fmt(tempValue_, "%.1f", shownTemp(r.senTempC, status.tempUnit));
-    lv_obj_set_style_text_color(tempValue_, tempColor(r.senTempC), 0);
+    lv_obj_set_style_text_color(tempValue_, temp, 0);
+    lv_obj_set_style_bg_color(tempRail_, temp, 0);
+    lv_color_t hum = humColor(r.senHum);
     lv_label_set_text_fmt(humValue_, "%.0f", r.senHum);
-    lv_obj_set_style_text_color(humValue_, humColor(r.senHum), 0);
-    lv_label_set_text_fmt(pmValue_[0], "%.1f", r.pm1);
-    lv_label_set_text_fmt(pmValue_[1], "%.1f", r.pm25);
-    lv_label_set_text_fmt(pmValue_[2], "%.1f", r.pm4);
-    lv_label_set_text_fmt(pmValue_[3], "%.1f", r.pm10);
-    lv_obj_set_style_text_color(pmValue_[1], r.aqiOk ? aqiColor(r.aqi, r.aqiEvac) : hex(kText), 0);
+    lv_obj_set_style_text_color(humValue_, hum, 0);
+    lv_obj_set_style_bg_color(humRail_, hum, 0);
+    const float pmValues[] = {r.pm1, r.pm25, r.pm4, r.pm10};
+    const float pmGreen[] = {12, 12, 25, 54};
+    const float pmYellow[] = {35, 35, 50, 154};
+    const float pmOrange[] = {55, 55, 75, 254};
+    for (int i = 0; i < 4; i++) {
+      lv_label_set_text_fmt(pmValue_[i], "%.1f", pmValues[i]);
+      lv_color_t pm = (i == 1 && r.aqiOk) ? aqiColor(r.aqi, r.aqiEvac)
+                                          : upperBand(pmValues[i], pmGreen[i], pmYellow[i], pmOrange[i]);
+      lv_obj_set_style_text_color(pmValue_[i], pm, 0);
+      lv_obj_set_style_bg_color(pmRail_[i], pm, 0);
+    }
     lv_label_set_text_fmt(vocValue_, "%.0f", r.voc);
     lv_label_set_text(vocWord_, r.vocQuality);
     lv_color_t vocColor = upperBand(r.voc, 150, 250, 400);
     lv_obj_set_style_text_color(vocValue_, vocColor, 0);
     lv_obj_set_style_text_color(vocWord_, vocColor, 0);
+    lv_obj_set_style_bg_color(vocRail_, vocColor, 0);
+  } else {
+    lv_obj_set_style_bg_color(tempRail_, hex(kMuted), 0);
+    lv_obj_set_style_bg_color(humRail_, hex(kMuted), 0);
+    lv_obj_set_style_bg_color(vocRail_, hex(kMuted), 0);
+    for (int i = 0; i < 4; i++) lv_obj_set_style_bg_color(pmRail_[i], hex(kMuted), 0);
   }
 
   if (r.co2Ok) {
+    lv_color_t co2 = upperBand(r.co2, 600, 1000, 1500);
     lv_label_set_text_fmt(co2Value_, "%.0f", r.co2);
-    lv_obj_set_style_text_color(co2Value_, upperBand(r.co2, 600, 1000, 1500), 0);
+    lv_obj_set_style_text_color(co2Value_, co2, 0);
+    lv_obj_set_style_bg_color(co2Rail_, co2, 0);
+  } else {
+    lv_obj_set_style_bg_color(co2Rail_, hex(kMuted), 0);
   }
 
   if (r.bmeOk) {
     lv_label_set_text_fmt(pressureValue_, "%.0f", r.bmePressureHpa);
     lv_obj_set_style_text_color(pressureValue_, hex(kText), 0);
+    lv_obj_set_style_bg_color(presRail_, hex(kText), 0);
   } else {
     lv_label_set_text(pressureValue_, "--");
     lv_obj_set_style_text_color(pressureValue_, hex(kMuted), 0);
+    lv_obj_set_style_bg_color(presRail_, hex(kMuted), 0);
   }
 
   const float gasValues[] = {r.co, r.no2, r.h2, r.ch4, r.ethanol, r.nh3, r.nox};

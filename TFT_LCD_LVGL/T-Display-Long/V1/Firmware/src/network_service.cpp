@@ -8,6 +8,7 @@
 #include <time.h>
 
 #include "backlight.h"
+#include "display_port.h"
 #include "halo_version.h"
 #include "ring_light.h"
 #include "sensor_hub.h"
@@ -292,6 +293,7 @@ void NetworkService::publishDiscovery() {
     char body[1500];
     size_t n = serializeJson(doc, body, sizeof(body));
     if (n > 0 && n < sizeof(body)) mqtt_.publish(config, body, true);
+    displayPump();
     yield();
   }
 
@@ -314,6 +316,7 @@ void NetworkService::publishDiscovery() {
     char body[1200];
     size_t n = serializeJson(doc, body, sizeof(body));
     if (n > 0 && n < sizeof(body)) mqtt_.publish(config, body, true);
+    displayPump();
   };
   textEnt("voc_quality", "VOC Quality", nullptr);
   textEnt("firmware_version", "HALO Firmware Version", "diagnostic");
@@ -342,6 +345,7 @@ void NetworkService::publishDiscovery() {
     char body[1200];
     size_t n = serializeJson(doc, body, sizeof(body));
     if (n > 0 && n < sizeof(body)) mqtt_.publish(config, body, true);
+    displayPump();
   };
   sw("startup_blink", "Startup Light Blink");
   sw("clock_24h", "24h Clock Format");
@@ -374,6 +378,7 @@ void NetworkService::publishDiscovery() {
     char body[1200];
     size_t n = serializeJson(doc, body, sizeof(body));
     if (n > 0 && n < sizeof(body)) mqtt_.publish(config, body, true);
+    displayPump();
   };
   num("sen55_temp_offset", "SEN55 Temperature Offset", -70, 70, 0.1f, "°C");
   num("sen55_hum_offset", "SEN55 Humidity Offset", -70, 70, 0.1f, "%");
@@ -415,6 +420,7 @@ void NetworkService::publishDiscovery() {
     char config[96];
     snprintf(config, sizeof(config), "homeassistant/select/%s/temp_unit/config", deviceId_);
     if (n > 0 && n < sizeof(body)) mqtt_.publish(config, body, true);
+    displayPump();
   }
 
   auto button = [&](const char* key, const char* name) {
@@ -434,6 +440,7 @@ void NetworkService::publishDiscovery() {
     char body[1000];
     size_t n = serializeJson(doc, body, sizeof(body));
     if (n > 0 && n < sizeof(body)) mqtt_.publish(config, body, true);
+    displayPump();
   };
   button("reboot", "ESP Reboot");
   button("calibrate_co2", "Calibrate SCD40 To 420ppm");
@@ -470,6 +477,7 @@ void NetworkService::publishDiscovery() {
     char body[1400];
     size_t n = serializeJson(doc, body, sizeof(body));
     if (n > 0 && n < sizeof(body)) mqtt_.publish(config, body, true);
+    displayPump();
   }
   {
     JsonDocument doc;
@@ -494,6 +502,7 @@ void NetworkService::publishDiscovery() {
     char body[1200];
     size_t n = serializeJson(doc, body, sizeof(body));
     if (n > 0 && n < sizeof(body)) mqtt_.publish(config, body, true);
+    displayPump();
   }
 }
 
@@ -511,6 +520,7 @@ void NetworkService::publishStates() {
       snprintf(value, sizeof(value), "%.*f", ent.decimals, number);
       mqtt_.publish(topic, value, true);
     }
+    displayPump();
   }
   snprintf(topic, sizeof(topic), "%s/text/voc_quality", root_);
   mqtt_.publish(topic, r.senOk ? r.vocQuality : "unavailable", true);
@@ -521,6 +531,7 @@ void NetworkService::publishStates() {
   auto pubSwitch = [&](const char* key, bool on) {
     snprintf(topic, sizeof(topic), "%s/switch/%s", root_, key);
     mqtt_.publish(topic, on ? "ON" : "OFF", true);
+    displayPump();
   };
   pubSwitch("startup_blink", cfg.startupBlink);
   pubSwitch("clock_24h", cfg.clock24h);
@@ -532,6 +543,7 @@ void NetworkService::publishStates() {
     snprintf(topic, sizeof(topic), "%s/number/%s", root_, key);
     snprintf(value, sizeof(value), "%.*f", decimals, number);
     mqtt_.publish(topic, value, true);
+    displayPump();
   };
   pubNum("sen55_temp_offset", cfg.sen55TempOffset, 1);
   pubNum("sen55_hum_offset", cfg.sen55HumOffset, 1);

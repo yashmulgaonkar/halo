@@ -5,12 +5,15 @@
 #include <lvgl.h>
 #include <string.h>
 
+#include "backlight.h"
 #include "board_pins.h"
 
 namespace {
 spi_device_handle_t g_spi = nullptr;
 lv_disp_draw_buf_t g_drawBuf;
 lv_color_t* g_buf = nullptr;
+uint32_t g_lastFrameMs = 0;
+uint32_t g_lastWakeMs = 0;
 constexpr int kBandRows = 8;
 constexpr int kSpiHz = 32000000;
 alignas(4) uint16_t g_band[HALO_LCD_W * kBandRows];
@@ -168,13 +171,30 @@ void pushFrame(const uint16_t* frame) {
   csHigh();
 }
 
+// Pixel writes do not leave sleep. After a stalled frame the AXS15231 stays dark
+// until it is told to wake again, even while the rest of the firmware keeps running.
+void wakePanel(uint32_t now) {
+  uint32_t gap = g_lastFrameMs == 0 ? 0 : now - g_lastFrameMs;
+  bool stalled = g_lastFrameMs != 0 && gap > 1500;
+  bool due = g_lastWakeMs == 0 || now - g_lastWakeMs >= 600000;
+  if (!stalled && !due) return;
+  sendCmdDelay(0x11, nullptr, 0, 120);
+  sendCmd(0x29, nullptr, 0);
+  backlight().refresh(stalled);
+  g_lastWakeMs = now;
+  if (stalled) Serial.printf("Display wake after %lu ms gap\n", (unsigned long)gap);
+}
+
 void flushCb(lv_disp_drv_t* drv, const lv_area_t* area, lv_color_t* color) {
   (void)area;
   if (g_spi == nullptr || color == nullptr) {
     lv_disp_flush_ready(drv);
     return;
   }
+  uint32_t now = millis();
+  wakePanel(now);
   pushFrame((const uint16_t*)&color->full);
+  g_lastFrameMs = millis();
   lv_disp_flush_ready(drv);
 }
 
@@ -185,6 +205,8 @@ void fillBlack() {
                                         MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   }
   if (black != nullptr) pushFrame(black);
+  g_lastFrameMs = millis();
+  g_lastWakeMs = millis();
 }
 }  // namespace
 

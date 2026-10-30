@@ -61,6 +61,12 @@ class HaloUi {
   lv_obj_t* aqiValue_ = nullptr;
   lv_obj_t* aqiCat_ = nullptr;
   lv_obj_t* aqiRail_ = nullptr;
+  lv_obj_t* tempRail_ = nullptr;
+  lv_obj_t* humRail_ = nullptr;
+  lv_obj_t* presRail_ = nullptr;
+  lv_obj_t* co2Rail_ = nullptr;
+  lv_obj_t* pmRail_[4] = {};
+  lv_obj_t* vocRail_ = nullptr;
   lv_obj_t* tempValue_ = nullptr;
   lv_obj_t* tempUnit_ = nullptr;
   lv_obj_t* humValue_ = nullptr;

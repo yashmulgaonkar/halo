@@ -38,6 +38,7 @@ void setup() {
 }
 
 void loop() {
+  backlight().refresh();
   uint32_t mark = micros();
   network().loop();
   ring().markStage(1, micros() - mark);
