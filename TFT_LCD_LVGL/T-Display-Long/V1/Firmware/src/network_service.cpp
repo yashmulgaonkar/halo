@@ -7,6 +7,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "aqi.h"
 #include "backlight.h"
 #include "display_port.h"
 #include "halo_version.h"
@@ -68,6 +69,117 @@ String htmlEscape(const char* src) {
     else out += *p;
   }
   return out;
+}
+
+const char kPortalCss[] =
+    ":root{color-scheme:dark}"
+    "*{box-sizing:border-box}"
+    "body{margin:0;background:#000;color:#f4f7fb;font:15px/1.45 ui-sans-serif,system-ui,sans-serif}"
+    "main{max-width:920px;margin:0 auto;padding:22px 16px 56px}"
+    "header{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:18px}"
+    "h1{margin:0;font-size:20px;letter-spacing:.18em;font-weight:700}"
+    "h2{margin:26px 0 10px;font-size:12px;letter-spacing:.14em;color:#93a0b5;font-weight:650}"
+    ".sub{margin:4px 0 0;color:#93a0b5}"
+    "nav{display:flex;gap:14px;margin-top:8px}"
+    "nav a{color:#93a0b5;text-decoration:none}"
+    "nav a.on{color:#f4f7fb}"
+    ".pills{display:flex;gap:8px;flex-wrap:wrap}"
+    ".pill{border-radius:999px;padding:5px 10px;background:#141820;color:#93a0b5;font-size:12px}"
+    ".pill.on{background:#3ddc97;color:#04140c}"
+    ".pill.off{background:#f07167;color:#fff}"
+    ".hero{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;background:#141820;"
+    "border-radius:22px;padding:22px;margin-bottom:12px;border-left:6px solid #93a0b5}"
+    ".hero .k{color:#93a0b5;letter-spacing:.14em;font-size:12px}"
+    ".hero b{display:block;font-size:68px;line-height:.85;margin:6px 0}"
+    ".hero .cat{font-size:18px}"
+    ".grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px}"
+    ".card{background:#141820;border-radius:16px;padding:12px 14px 10px;border-left:4px solid #2c3544}"
+    ".card .n{color:#93a0b5;font-size:11px;letter-spacing:.08em}"
+    ".card .v{font-size:28px;font-weight:700;line-height:1.1;margin-top:4px}"
+    ".card .u{color:#93a0b5;font-size:12px}"
+    ".wide{grid-column:1/-1}"
+    "label{display:block;color:#93a0b5;font-size:12px;margin-top:10px}"
+    "input{width:100%;margin:4px 0 0;padding:11px 12px;border:0;border-radius:10px;background:#0c0e12;color:#fff}"
+    "input[type=range]{height:32px;padding:0;background:transparent;accent-color:#3ddc97}"
+    "button,.btn{display:inline-block;background:#3ddc97;color:#04140c;border:0;border-radius:10px;"
+    "padding:10px 14px;font-weight:700;text-decoration:none;cursor:pointer}"
+    "button.warn{background:#f07167}"
+    ".actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:18px}"
+    "form.inline{display:inline}"
+    ".panel{background:#141820;border-radius:18px;padding:16px 16px 18px}"
+    ".split{display:grid;grid-template-columns:1fr 1fr;gap:10px}"
+    "@media(max-width:640px){.hero b{font-size:52px}.split{grid-template-columns:1fr}}";
+
+void portalOpen(String& page, const char* title, bool live) {
+  page += "<!doctype html><html><head><meta charset=utf-8>";
+  page += "<meta name=viewport content=\"width=device-width,initial-scale=1\">";
+  if (live) page += "<meta http-equiv=refresh content=15>";
+  page += "<title>";
+  page += title;
+  page += "</title><style>";
+  page += kPortalCss;
+  page += "</style></head><body><main>";
+}
+
+void portalClose(String& page) { page += "</main></body></html>"; }
+
+const char* aqiCss(int aqi, bool evacuate) {
+  if (evacuate || aqi > 300) return "#c43b4e";
+  if (aqi <= 50) return "#3ddc97";
+  if (aqi <= 100) return "#e6c85c";
+  if (aqi <= 150) return "#f0a04b";
+  if (aqi <= 200) return "#f07167";
+  return "#c084fc";
+}
+
+const char* bandCss(float value, float green, float yellow, float orange) {
+  if (value <= green) return "#3ddc97";
+  if (value <= yellow) return "#e6c85c";
+  if (orange >= 0.f && value <= orange) return "#f0a04b";
+  return "#f07167";
+}
+
+const char* tempCss(float celsius) {
+  if (celsius >= 18.f && celsius <= 24.f) return "#3ddc97";
+  if ((celsius > 24.f && celsius <= 27.f) || (celsius >= 16.f && celsius < 18.f)) return "#e6c85c";
+  if ((celsius > 27.f && celsius <= 30.f) || (celsius >= 10.f && celsius < 16.f)) return "#f0a04b";
+  return "#f07167";
+}
+
+const char* humCss(float humidity) {
+  if (humidity >= 30.f && humidity <= 50.f) return "#3ddc97";
+  if ((humidity > 50.f && humidity <= 60.f) || (humidity >= 20.f && humidity < 30.f)) return "#e6c85c";
+  if ((humidity > 60.f && humidity <= 70.f) || (humidity >= 10.f && humidity < 20.f)) return "#f0a04b";
+  return "#f07167";
+}
+
+String readingText(bool ok, float value, int decimals) {
+  if (!ok) return "--";
+  String text(value, (unsigned int)decimals);
+  text.trim();
+  return text;
+}
+
+void metric(String& page, const char* name, const String& value, const char* unit, const char* color) {
+  page += "<article class=card style=\"border-color:";
+  page += color;
+  page += "\"><div class=n>";
+  page += name;
+  page += "</div><div class=v style=\"color:";
+  page += color;
+  page += "\">";
+  page += value;
+  page += "</div><div class=u>";
+  page += unit;
+  page += "</div></article>";
+}
+
+void portalNav(String& page, bool setup) {
+  page += "<nav><a href=/";
+  if (!setup) page += " class=on";
+  page += ">Live</a><a href=/setup";
+  if (setup) page += " class=on";
+  page += ">Settings</a></nav>";
 }
 
 bool lookup(const char* key, const Readings& r, bool wifi, float& out) {
@@ -734,48 +846,43 @@ void NetworkService::publishTelemetry() {
 void NetworkService::sendSetup() {
   const Settings& cfg = settings();
   String page;
-  page.reserve(3600);
-  page += "<!doctype html><meta name=viewport content=\"width=device-width,initial-scale=1\">";
-  page += "<title>HALO</title><style>body{font:16px sans-serif;background:#000;color:#f4f7fb;margin:0;padding:20px}";
-  page += "input{width:100%;box-sizing:border-box;margin:4px 0 12px;padding:10px;border-radius:8px;border:0;background:#141820;color:#fff}";
-  page += "button{background:#3ddc97;color:#04140c;border:0;border-radius:8px;padding:12px 16px;font-weight:700}</style>";
-  page += "<h1>HALO</h1><p>Join Wi-Fi, then point this device at your MQTT broker. Home Assistant discovery is automatic.</p>";
-  page += "<form method=post action=/save>";
-  page += "<label>Wi-Fi name</label><input name=ssid value=\"" + htmlEscape(cfg.wifiSsid) + "\">";
-  page += "<label>Wi-Fi password</label><input name=pass type=password placeholder=unchanged>";
-  page += "<label>MQTT host</label><input name=mqtt_host value=\"" + htmlEscape(cfg.mqttHost) + "\">";
+  page.reserve(8000);
+  portalOpen(page, "HALO settings", false);
+  page += "<header><div><h1>HALO</h1><p class=sub>";
+  page += htmlEscape(hostname_);
+  page += "</p>";
+  portalNav(page, true);
+  page += "</div></header>";
+  page += "<p class=sub>Join Wi-Fi, then point this device at your MQTT broker. Home Assistant discovery is automatic.</p>";
+  page += "<form class=panel method=post action=/save><div class=split>";
+  page += "<div><label>Wi-Fi name</label><input name=ssid value=\"" + htmlEscape(cfg.wifiSsid) + "\"></div>";
+  page += "<div><label>Wi-Fi password</label><input name=pass type=password placeholder=unchanged autocomplete=new-password></div>";
+  page += "<div><label>MQTT host</label><input name=mqtt_host value=\"" + htmlEscape(cfg.mqttHost) + "\"></div>";
   char port[8];
   snprintf(port, sizeof(port), "%u", cfg.mqttPort);
-  page += "<label>MQTT port</label><input name=mqtt_port value=\"";
+  page += "<div><label>MQTT port</label><input name=mqtt_port inputmode=numeric value=\"";
   page += port;
-  page += "\">";
-  page += "<label>MQTT user</label><input name=mqtt_user value=\"" + htmlEscape(cfg.mqttUser) + "\">";
-  page += "<label>MQTT password</label><input name=mqtt_pass type=password placeholder=unchanged>";
-  page += "<label>Timezone</label><input name=tz value=\"" + htmlEscape(cfg.tz) + "\">";
-  page += "<button type=submit>Save and restart</button></form>";
+  page += "\"></div>";
+  page += "<div><label>MQTT user</label><input name=mqtt_user value=\"" + htmlEscape(cfg.mqttUser) + "\"></div>";
+  page += "<div><label>MQTT password</label><input name=mqtt_pass type=password placeholder=unchanged autocomplete=new-password></div>";
+  page += "</div><label>Timezone</label><input name=tz value=\"" + htmlEscape(cfg.tz) + "\">";
+  page += "<div class=actions><button type=submit>Save and restart</button></div></form>";
+  page += "<h2>RING</h2>";
   appendRingForm(page);
+  portalClose(page);
   server_.send(200, "text/html", page);
 }
 
 void NetworkService::appendRingForm(String& page) {
-  char color[8];
-  snprintf(color, sizeof(color), "#%02x%02x%02x", ring().red(), ring().green(), ring().blue());
-  bool rainbow = strcmp(ring().effectName(), "Rainbow") == 0 && ring().power();
   uint8_t bright = ring().brightness();
-  if (bright == 0) bright = 180;
-  page += "<h2>Ring</h2><form method=post action=/ring>";
-  page += "<label>Color</label><input type=color name=color value=\"";
-  page += color;
-  page += "\" style=\"height:48px;padding:4px\">";
+  if (bright == 0) bright = 160;
+  page += "<form class=panel method=post action=/ring>";
+  page += "<p class=sub>Color follows the worse of AQI and CO2. Brightness stays where you set it.</p>";
   page += "<label>Brightness</label><input name=brightness type=range min=1 max=255 value=\"";
   page += String(bright);
-  page += "\" style=\"width:100%;height:32px;padding:0;margin:4px 0 12px\">";
-  page += "<label style=\"display:flex;align-items:center;gap:8px;margin:0 0 12px\">";
-  page += "<input type=checkbox name=rainbow value=1 style=\"width:auto;margin:0\"";
-  if (rainbow) page += " checked";
-  page += "> Rainbow</label>";
-  page += "<button type=submit>Apply</button> ";
-  page += "<button type=submit name=mode value=off style=\"background:#f07167\">Off</button></form>";
+  page += "\">";
+  page += "<div class=actions><button type=submit>Apply brightness</button>";
+  page += "<button class=warn type=submit name=mode value=off>Turn ring off</button></div></form>";
 }
 
 void NetworkService::handleRing() {
@@ -788,10 +895,10 @@ void NetworkService::handleRing() {
   if (server_.hasArg("mode") && server_.arg("mode") == "off") {
     ring().setPower(false);
   } else if (server_.hasArg("rainbow")) {
-    if (ring().brightness() == 0) ring().setBrightness(180);
+    if (ring().brightness() == 0) ring().setBrightness(160);
     ring().setEffect("Rainbow");
     ring().setPower(true);
-  } else {
+  } else if (server_.hasArg("color")) {
     uint8_t r = 255, g = 255, b = 255;
     String color = server_.arg("color");
     if (color.length() == 7 && color.charAt(0) == '#') {
@@ -799,7 +906,7 @@ void NetworkService::handleRing() {
       g = (uint8_t)strtol(color.substring(3, 5).c_str(), nullptr, 16);
       b = (uint8_t)strtol(color.substring(5, 7).c_str(), nullptr, 16);
     }
-    if (ring().brightness() == 0) ring().setBrightness(180);
+    if (ring().brightness() == 0) ring().setBrightness(160);
     ring().setEffect("None");
     ring().setColor(r, g, b);
     ring().setPower(true);
@@ -811,33 +918,111 @@ void NetworkService::handleRing() {
 
 void NetworkService::sendStatus() {
   const Readings& r = sensors().latest();
+  const Settings& cfg = settings();
   String page;
-  page.reserve(3400);
-  page += "<!doctype html><meta name=viewport content=\"width=device-width,initial-scale=1\">";
-  page += "<title>HALO</title><style>body{font:16px sans-serif;background:#000;color:#f4f7fb;margin:0;padding:20px}";
-  page += "a,button{color:#04140c;background:#3ddc97;border:0;border-radius:8px;padding:8px 12px;text-decoration:none}";
-  page += "input[type=color]{width:100%;box-sizing:border-box;margin:4px 0 12px;border:0;border-radius:8px;background:#141820}";
-  page += "form.tools{display:inline}</style>";
-  page += "<h1>HALO</h1><p>";
-  page += hostname_;
-  page += " · ";
-  page += ip_;
-  page += "</p><ul>";
-  page += "<li>AQI ";
-  page += r.aqiOk ? String(r.aqi) : String("--");
-  page += "<li>CO2 ";
-  page += r.co2Ok ? String(r.co2, 0) : String("--");
-  page += "<li>PM2.5 ";
-  page += r.senOk ? String(r.pm25, 1) : String("--");
-  page += "<li>Temp C ";
-  page += r.senOk ? String(r.senTempC, 1) : String("--");
-  page += "<li>MQTT ";
-  page += mqtt_.connected() ? "connected" : "offline";
-  page += "</ul>";
+  page.reserve(12000);
+  portalOpen(page, "HALO", true);
+  page += "<header><div><h1>HALO</h1><p class=sub>";
+  page += htmlEscape(hostname_);
+  page += " &middot; ";
+  page += htmlEscape(ip_);
+  page += " &middot; ";
+  page += HALO_FW_VERSION;
+  page += "</p>";
+  portalNav(page, false);
+  page += "</div><div class=pills>";
+  page += wifiConnected() ? "<span class=\"pill on\">Wi-Fi</span>" : "<span class=\"pill off\">Wi-Fi</span>";
+  page += mqtt_.connected() ? "<span class=\"pill on\">MQTT</span>" : "<span class=\"pill off\">MQTT</span>";
+  page += "</div></header>";
+
+  const char* aqiColor = r.aqiOk ? aqiCss(r.aqi, r.aqiEvac) : "#93a0b5";
+  page += "<section class=hero style=\"border-color:";
+  page += aqiColor;
+  page += "\"><div><div class=k>AIR QUALITY</div><b style=\"color:";
+  page += aqiColor;
+  page += "\">";
+  if (r.aqiOk) page += r.aqiEvac ? "EVAC" : String(r.aqi);
+  else page += "--";
+  page += "</b><div class=cat style=\"color:";
+  page += aqiColor;
+  page += "\">";
+  if (r.aqiOk) page += aqiCategory(r.aqi, r.aqiEvac);
+  else page += r.senPresent ? "Warming up" : "Particle sensor missing";
+  page += "</div></div><div class=sub>";
+  page += r.nowcastOk ? String("NowCast ") + String(r.nowcast) : String("NowCast after 12 hours");
+  page += "</div></section><section class=grid>";
+
+  float shownTemp = r.senTempC;
+  const char* tempUnit = "C";
+  if (cfg.tempUnit == TEMP_F) {
+    shownTemp = r.senTempC * 9.f / 5.f + 32.f;
+    tempUnit = "F";
+  } else if (cfg.tempUnit == TEMP_K) {
+    shownTemp = r.senTempC + 273.15f;
+    tempUnit = "K";
+  }
+  metric(page, "CO2", readingText(r.co2Ok, r.co2, 0), "ppm", r.co2Ok ? bandCss(r.co2, 600, 1000, 1500) : "#93a0b5");
+  metric(page, "TEMP", readingText(r.senOk, shownTemp, 1), tempUnit, r.senOk ? tempCss(r.senTempC) : "#93a0b5");
+  metric(page, "HUMIDITY", readingText(r.senOk, r.senHum, 0), "%", r.senOk ? humCss(r.senHum) : "#93a0b5");
+  metric(page, "PRESSURE", readingText(r.bmeOk, r.bmePressureHpa, 0), "hPa", r.bmeOk ? "#f4f7fb" : "#93a0b5");
+  metric(page, "PM1", readingText(r.senOk, r.pm1, 1), "ug/m3", r.senOk ? bandCss(r.pm1, 12, 35, 55) : "#93a0b5");
+  metric(page, "PM2.5", readingText(r.senOk, r.pm25, 1), "ug/m3",
+         (r.senOk && r.aqiOk) ? aqiCss(r.aqi, r.aqiEvac) : (r.senOk ? bandCss(r.pm25, 12, 35, 55) : "#93a0b5"));
+  metric(page, "PM4", readingText(r.senOk, r.pm4, 1), "ug/m3", r.senOk ? bandCss(r.pm4, 25, 50, 75) : "#93a0b5");
+  metric(page, "PM10", readingText(r.senOk, r.pm10, 1), "ug/m3", r.senOk ? bandCss(r.pm10, 54, 154, 254) : "#93a0b5");
+  metric(page, "VOC", readingText(r.senOk, r.voc, 0), r.senOk ? r.vocQuality : "--",
+         r.senOk ? bandCss(r.voc, 150, 250, 400) : "#93a0b5");
+  page += "</section><h2>GASES</h2><section class=grid>";
+
+  const char* gasNames[] = {"CO", "NO2", "H2", "CH4", "ETHANOL", "NH3", "NOX"};
+  const char* gasUnits[] = {"ppm", "ppm", "ppm", "ppm", "ppm", "ppm", "idx"};
+  const float gasValues[] = {r.co, r.no2, r.h2, r.ch4, r.ethanol, r.nh3, r.nox};
+  const bool gasOk[] = {r.micsOk, r.micsOk, r.micsOk, r.micsOk, r.micsOk, r.micsOk, r.senOk && r.noxOk};
+  const float g1[] = {15, 0.03f, 0.4f, 2, 0.5f, 0.5f, 150};
+  const float g2[] = {30, 0.06f, 1, 10, 1.5f, 1, 250};
+  const float g3[] = {36, 0.1f, 2, -1, 3, 2, 400};
+  const int gasDecimals[] = {2, 2, 2, 2, 2, 2, 1};
+  for (int i = 0; i < 7; i++) {
+    metric(page, gasNames[i], readingText(gasOk[i], gasValues[i], gasDecimals[i]), gasUnits[i],
+           gasOk[i] ? bandCss(gasValues[i], g1[i], g2[i], g3[i]) : "#93a0b5");
+  }
+  page += "</section><h2>DEVICE</h2><section class=grid>";
+
+  unsigned long sec = millis() / 1000UL;
+  unsigned long days = sec / 86400UL;
+  unsigned long hours = (sec % 86400UL) / 3600UL;
+  unsigned long mins = (sec % 3600UL) / 60UL;
+  char uptime[40];
+  if (days) snprintf(uptime, sizeof(uptime), "%lud %luh %lum", days, hours, mins);
+  else snprintf(uptime, sizeof(uptime), "%luh %lum", hours, mins);
+
+  const char* mics = "missing";
+  const char* micsColor = "#f07167";
+  if (r.micsPresent && r.micsReady) {
+    mics = r.micsOk ? "live" : "calibrating";
+    micsColor = r.micsOk ? "#3ddc97" : "#e6c85c";
+  } else if (r.micsPresent) {
+    mics = "warming";
+    micsColor = "#e6c85c";
+  }
+  String particle = htmlEscape(r.senName[0] ? r.senName : "PARTICLES");
+  metric(page, "UPTIME", uptime, "", "#f4f7fb");
+  metric(page, "WIFI", wifiConnected() ? "connected" : "offline", htmlEscape(cfg.wifiSsid).c_str(),
+         wifiConnected() ? "#3ddc97" : "#f07167");
+  metric(page, "MQTT", mqtt_.connected() ? "connected" : "offline", htmlEscape(cfg.mqttHost).c_str(),
+         mqtt_.connected() ? "#3ddc97" : "#f07167");
+  metric(page, "BACKLIGHT", String(backlight().level()), "/ 255", backlight().level() ? "#f4f7fb" : "#93a0b5");
+  metric(page, "SCD40", r.scdPresent ? "ok" : "missing", "CO2", r.scdPresent ? "#3ddc97" : "#f07167");
+  metric(page, particle.c_str(), r.senPresent ? "ok" : "missing", "PM / VOC", r.senPresent ? "#3ddc97" : "#f07167");
+  metric(page, "BME280", r.bmePresent ? "ok" : "missing", "pressure", r.bmePresent ? "#3ddc97" : "#f07167");
+  metric(page, "MICS-4514", mics, "gases", micsColor);
+  page += "</section><h2>RING</h2>";
   appendRingForm(page);
-  page += "<p><a href=/setup>Settings</a> ";
-  page += "<form class=tools method=post action=/reboot><button>Restart</button></form> ";
-  page += "<form class=tools method=post action=/forget><button>Forget Wi-Fi</button></form></p>";
+  page += "<div class=actions>";
+  page += "<form class=inline method=post action=/reboot onsubmit=\"return confirm('Restart HALO?')\"><button>Restart</button></form>";
+  page += "<form class=inline method=post action=/forget onsubmit=\"return confirm('Forget Wi-Fi and open the setup hotspot?')\"><button class=warn>Forget Wi-Fi</button></form>";
+  page += "</div>";
+  portalClose(page);
   server_.send(200, "text/html", page);
 }
 
@@ -856,7 +1041,13 @@ void NetworkService::handleSave() {
   }
   if (server_.hasArg("tz") && server_.arg("tz").length() > 0) copyField(cfg.tz, sizeof(cfg.tz), server_.arg("tz"));
   cfg.save();
-  server_.send(200, "text/html", "<p>Saved. Restarting.</p>");
+  String page;
+  page.reserve(2500);
+  portalOpen(page, "HALO", false);
+  page += "<header><div><h1>HALO</h1></div></header>";
+  page += "<section class=panel><h2>SAVED</h2><p>Settings are stored. HALO is restarting.</p></section>";
+  portalClose(page);
+  server_.send(200, "text/html", page);
   reboot_ = true;
 }
 

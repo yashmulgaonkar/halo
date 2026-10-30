@@ -126,6 +126,21 @@ const char* unitSuffix(uint8_t unit) {
   return "F";
 }
 
+void setReading(lv_obj_t* label, const char* text) {
+  lv_label_set_text(label, text);
+  // Six characters ("100.00", "6924.92") run into the name and unit at 28px.
+  lv_obj_set_style_text_font(label, strlen(text) >= 6 ? &lv_font_montserrat_18 : &lv_font_montserrat_28, 0);
+}
+
+void placeVoc(lv_obj_t* value, lv_obj_t* word, const char* quality) {
+  bool wide = quality != nullptr && strlen(quality) >= 14;
+  lv_obj_set_style_text_font(word, wide ? &lv_font_montserrat_12 : &lv_font_montserrat_14, 0);
+  lv_obj_align(word, LV_ALIGN_LEFT_MID, 6, wide ? 12 : 9);
+  // "Very abnormal" is 90px and meets a 28px index. Park that index on the top row.
+  lv_obj_set_style_text_font(value, wide ? &lv_font_montserrat_18 : &lv_font_montserrat_28, 0);
+  lv_obj_align(value, LV_ALIGN_RIGHT_MID, -2, wide ? -10 : 0);
+}
+
 float clampStep(float value, float lo, float hi) {
   if (value < lo) return lo;
   if (value > hi) return hi;
@@ -427,15 +442,17 @@ void HaloUi::refreshClock(const UiStatus& status) {
 void HaloUi::refresh(const UiStatus& status) {
   const Readings& r = *status.readings;
   if (r.aqiOk) {
-    if (r.aqiEvac) lv_label_set_text(aqiValue_, "EVAC");
-    else lv_label_set_text_fmt(aqiValue_, "%d", r.aqi);
+    char buf[16];
+    if (r.aqiEvac) snprintf(buf, sizeof(buf), "EVAC");
+    else snprintf(buf, sizeof(buf), "%d", r.aqi);
+    setReading(aqiValue_, buf);
     lv_label_set_text(aqiCat_, aqiCategory(r.aqi, r.aqiEvac));
     lv_color_t color = aqiColor(r.aqi, r.aqiEvac);
     lv_obj_set_style_text_color(aqiValue_, color, 0);
     lv_obj_set_style_text_color(aqiCat_, color, 0);
     lv_obj_set_style_bg_color(aqiRail_, color, 0);
   } else {
-    lv_label_set_text(aqiValue_, "--");
+    setReading(aqiValue_, "--");
     lv_label_set_text(aqiCat_, r.senPresent ? "Warming up" : "SEN55 missing");
     lv_obj_set_style_text_color(aqiValue_, hex(kText), 0);
     lv_obj_set_style_text_color(aqiCat_, hex(kMuted), 0);
@@ -444,12 +461,15 @@ void HaloUi::refresh(const UiStatus& status) {
 
   lv_label_set_text(tempUnit_, unitSuffix(status.tempUnit));
   if (r.senOk) {
+    char buf[16];
     lv_color_t temp = tempColor(r.senTempC);
-    lv_label_set_text_fmt(tempValue_, "%.1f", shownTemp(r.senTempC, status.tempUnit));
+    snprintf(buf, sizeof(buf), "%.1f", shownTemp(r.senTempC, status.tempUnit));
+    setReading(tempValue_, buf);
     lv_obj_set_style_text_color(tempValue_, temp, 0);
     lv_obj_set_style_bg_color(tempRail_, temp, 0);
     lv_color_t hum = humColor(r.senHum);
-    lv_label_set_text_fmt(humValue_, "%.0f", r.senHum);
+    snprintf(buf, sizeof(buf), "%.0f", r.senHum);
+    setReading(humValue_, buf);
     lv_obj_set_style_text_color(humValue_, hum, 0);
     lv_obj_set_style_bg_color(humRail_, hum, 0);
     const float pmValues[] = {r.pm1, r.pm25, r.pm4, r.pm10};
@@ -457,14 +477,17 @@ void HaloUi::refresh(const UiStatus& status) {
     const float pmYellow[] = {35, 35, 50, 154};
     const float pmOrange[] = {55, 55, 75, 254};
     for (int i = 0; i < 4; i++) {
-      lv_label_set_text_fmt(pmValue_[i], "%.1f", pmValues[i]);
+      snprintf(buf, sizeof(buf), "%.1f", pmValues[i]);
+      setReading(pmValue_[i], buf);
       lv_color_t pm = (i == 1 && r.aqiOk) ? aqiColor(r.aqi, r.aqiEvac)
                                           : upperBand(pmValues[i], pmGreen[i], pmYellow[i], pmOrange[i]);
       lv_obj_set_style_text_color(pmValue_[i], pm, 0);
       lv_obj_set_style_bg_color(pmRail_[i], pm, 0);
     }
-    lv_label_set_text_fmt(vocValue_, "%.0f", r.voc);
+    snprintf(buf, sizeof(buf), "%.0f", r.voc);
+    setReading(vocValue_, buf);
     lv_label_set_text(vocWord_, r.vocQuality);
+    placeVoc(vocValue_, vocWord_, r.vocQuality);
     lv_color_t vocColor = upperBand(r.voc, 150, 250, 400);
     lv_obj_set_style_text_color(vocValue_, vocColor, 0);
     lv_obj_set_style_text_color(vocWord_, vocColor, 0);
@@ -477,8 +500,10 @@ void HaloUi::refresh(const UiStatus& status) {
   }
 
   if (r.co2Ok) {
+    char buf[16];
     lv_color_t co2 = upperBand(r.co2, 600, 1000, 1500);
-    lv_label_set_text_fmt(co2Value_, "%.0f", r.co2);
+    snprintf(buf, sizeof(buf), "%.0f", r.co2);
+    setReading(co2Value_, buf);
     lv_obj_set_style_text_color(co2Value_, co2, 0);
     lv_obj_set_style_bg_color(co2Rail_, co2, 0);
   } else {
@@ -486,11 +511,13 @@ void HaloUi::refresh(const UiStatus& status) {
   }
 
   if (r.bmeOk) {
-    lv_label_set_text_fmt(pressureValue_, "%.0f", r.bmePressureHpa);
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%.0f", r.bmePressureHpa);
+    setReading(pressureValue_, buf);
     lv_obj_set_style_text_color(pressureValue_, hex(kText), 0);
     lv_obj_set_style_bg_color(presRail_, hex(kText), 0);
   } else {
-    lv_label_set_text(pressureValue_, "--");
+    setReading(pressureValue_, "--");
     lv_obj_set_style_text_color(pressureValue_, hex(kMuted), 0);
     lv_obj_set_style_bg_color(presRail_, hex(kMuted), 0);
   }
@@ -502,12 +529,14 @@ void HaloUi::refresh(const UiStatus& status) {
   const float g3[] = {36, 0.1f, 2, -1, 3, 2, 400};
   for (int i = 0; i < 7; i++) {
     if (!gasOk[i] || (i == 6 && !r.noxOk)) {
-      lv_label_set_text(gasValue_[i], "--");
+      setReading(gasValue_[i], "--");
       lv_obj_set_style_text_color(gasValue_[i], hex(kMuted), 0);
       lv_obj_set_style_bg_color(gasPip_[i], hex(0x2C3544), 0);
       continue;
     }
-    lv_label_set_text_fmt(gasValue_[i], i == 6 ? "%.1f" : "%.2f", gasValues[i]);
+    char buf[16];
+    snprintf(buf, sizeof(buf), i == 6 ? "%.1f" : "%.2f", gasValues[i]);
+    setReading(gasValue_[i], buf);
     lv_color_t color = upperBand(gasValues[i], g1[i], g2[i], g3[i]);
     lv_obj_set_style_text_color(gasValue_[i], color, 0);
     lv_obj_set_style_bg_color(gasPip_[i], color, 0);
