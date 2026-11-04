@@ -14,7 +14,7 @@ Chrome or Edge: [https://yashmulgaonkar.github.io/halo/](https://yashmulgaonkar.
 
 After it boots with no Wi-Fi saved, join **Halo Hotspot** and open `http://192.168.4.1`.
 
-The same image is attached to the GitHub release tagged `lvgl-<version>` once it is built from `main`.
+A push to `main` publishes that image as `lvgl-YYYY.M.D.N`. The tag is the Pacific date, and the last number increases when another release lands the same day. That version is compiled into the firmware. A local build reports `dev`.
 
 ## Build and flash
 

@@ -4,13 +4,17 @@ env:
   DEVICE_NAME: halo
   CHIP_FAMILY: ESP32-S3
 
+concurrency:
+  group: tft-lcd-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     paths:
-      - 'TFT_LCD/**'
-      - 'TFT_LCD_LVGL/**'
-      - '.github/workflows/tft_lcd_ota-update.yml'
-      - 'static/**'
+    - 'TFT_LCD/**'
+    - 'TFT_LCD_LVGL/**'
+    - '.github/workflows/tft_lcd_ota-update.yml'
+    - 'static/**'
   workflow_dispatch:
     inputs:
       version:
@@ -53,19 +57,44 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Resolve Version
         id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
         run: |
           set -euo pipefail
-          version=$(sed -n 's/.*HALO_FW_VERSION "\([^"]*\)".*/\1/p' \
-            TFT_LCD_LVGL/T-Display-Long/V1/Firmware/include/halo_version.h)
-          if [ -z "${version}" ]; then
-            echo "Error: Could not resolve LVGL firmware version"
+          # Feature-branch and manual builds are not releases. main pushes take the
+          # next Pacific-date tag, the same way FlightScnr names YYYY.M.D.N.
+          if [ "${EVENT_NAME}" != "push" ] || [ "${REF}" != "refs/heads/main" ]; then
+            echo "version=dev" >> "$GITHUB_OUTPUT"
+            echo "Resolved LVGL version: dev"
+            exit 0
+          fi
+          git fetch --tags --force origin
+          release_tz=America/Los_Angeles
+          today_prefix="$(TZ=${release_tz} date +%Y).$(TZ=${release_tz} date +%-m).$(TZ=${release_tz} date +%-d)"
+          latest_count=0
+          while IFS= read -r tag; do
+            [ -n "${tag}" ] || continue
+            rest="${tag#lvgl-}"
+            n="${rest##*.}"
+            prefix="${rest%.*}"
+            if [ "${prefix}" = "${today_prefix}" ] && [[ "${n}" =~ ^[0-9]+$ ]] && (( n > latest_count )); then
+              latest_count=${n}
+            fi
+          done < <(git tag -l "lvgl-${today_prefix}.*")
+          version="${today_prefix}.$((latest_count + 1))"
+          if git rev-parse -q --verify "refs/tags/lvgl-${version}" >/dev/null; then
+            echo "Error: tag lvgl-${version} already exists"
             exit 1
           fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "Resolved LVGL version: ${version}"
+          echo "Auto tag for ${today_prefix}: ${latest_count} -> ${version}"
 
   build-firmware:
     name: Build Firmware
@@ -146,8 +175,15 @@ jobs:
 
       - name: Build and merge a USB image
         working-directory: TFT_LCD_LVGL/T-Display-Long/V1/Firmware
+        env:
+          HALO_FW_VERSION: ${{ needs.get-lvgl-version.outputs.version }}
         run: |
           set -euo pipefail
+          if ! [[ "${HALO_FW_VERSION}" =~ ^(dev|[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "ERROR: refusing firmware version '${HALO_FW_VERSION}'"
+            exit 1
+          fi
+          export PLATFORMIO_BUILD_FLAGS="-D HALO_FW_VERSION=\\\"${HALO_FW_VERSION}\\\""
           pio run
           BUILD=".pio/build/halo-tdisplay-s3-long"
           BOOT_APP0="$(find "$HOME/.platformio/packages" -name boot_app0.bin | head -n1)"
@@ -240,6 +276,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: lvgl-${{ needs.get-lvgl-version.outputs.version }}
+          target_commitish: ${{ github.sha }}
           name: HALO LVGL firmware (new UI) ${{ needs.get-lvgl-version.outputs.version }}
           body: Browser-flash image for HALO LVGL firmware (new UI). firmware.bin is the Wi-Fi update used by the device portal and Home Assistant. The same files are on the installer.
           files: firmware-lvgl/*
@@ -359,8 +396,8 @@ jobs:
             find . -type f -print
             exit 1
           fi
-          if [ -z "${VERSION}" ]; then
-            echo "ERROR: LVGL VERSION is empty"
+          if ! [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: LVGL VERSION '${VERSION}' is not a release version"
             exit 1
           fi
           printf '%s\n' "${VERSION}" > version.txt
