@@ -19,15 +19,26 @@ bool g_dragged = false;
 int g_candX = 0;
 int g_candY = 0;
 uint8_t g_stable = 0;
+volatile bool g_irqSeen = false;
+uint32_t g_irqMs = 0;
 constexpr int kSwipePx = 36;
 constexpr int kStablePx = 24;
 constexpr int kJumpPx = 70;
 constexpr uint8_t kNeedStable = 3;
+constexpr uint32_t kIrqFreshMs = 120;
 
-bool fingerDown() {
-  // AXS15231 IRQ is low while a finger is on the glass. The display refresh
-  // can corrupt an I2C read into a fake point when the line is idle.
-  return digitalRead(PIN_TOUCH_IRQ) == LOW;
+void IRAM_ATTR onTouchIrq() { g_irqSeen = true; }
+
+// The IRQ line pulses low when a new point is ready. It does not stay low for
+// the whole press, so a polled level check misses it. A recent pulse, or the
+// line being low right now, means the following I2C read is a real contact.
+bool contactHint() {
+  if (g_irqSeen) {
+    g_irqSeen = false;
+    g_irqMs = millis();
+  }
+  if (digitalRead(PIN_TOUCH_IRQ) == LOW) g_irqMs = millis();
+  return g_irqMs != 0 && (millis() - g_irqMs) < kIrqFreshMs;
 }
 
 bool axsPresent(uint8_t addr) {
@@ -84,15 +95,18 @@ void releaseContact() {
 }
 
 void readCb(lv_indev_drv_t*, lv_indev_data_t* data) {
-  if (!fingerDown()) {
-    releaseContact();
+  // Keep reading through a press. The chip only pulses IRQ, and a gap between
+  // pulses used to look like a lift before three samples could agree.
+  if (!g_tracking && !contactHint()) {
+    g_stable = 0;
     holdPoint(data, false);
     return;
   }
   int x = 0;
   int y = 0;
   if (!readPoint(x, y)) {
-    holdPoint(data, g_tracking);
+    releaseContact();
+    holdPoint(data, false);
     return;
   }
   if (!g_tracking) {
@@ -155,6 +169,7 @@ void touchBegin() {
   Wire1.begin(PIN_TOUCH_SDA, PIN_TOUCH_SCL);
   Wire1.setClock(100000);
   pinMode(PIN_TOUCH_IRQ, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(PIN_TOUCH_IRQ), onTouchIrq, FALLING);
 
   Serial.println("Touch bus scan:");
   for (uint8_t addr = 1; addr < 127; addr++) {
