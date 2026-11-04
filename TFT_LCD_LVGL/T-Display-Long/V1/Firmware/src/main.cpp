@@ -63,10 +63,6 @@ void loop() {
       network().forgetWifi();
     }
   } else {
-    if (bootDownAt != 0 && !bootHoldFired && millis() - bootDownAt > 40 && millis() - bootDownAt < 1200) {
-      ui().nextPage();
-      touchNoteActivity();
-    }
     bootDownAt = 0;
     bootHoldFired = false;
   }

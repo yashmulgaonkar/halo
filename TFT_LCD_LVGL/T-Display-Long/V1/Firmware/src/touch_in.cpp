@@ -16,7 +16,19 @@ bool g_tracking = false;
 int g_swipe = 0;
 uint32_t g_lastActivity = 0;
 bool g_dragged = false;
+int g_candX = 0;
+int g_candY = 0;
+uint8_t g_stable = 0;
 constexpr int kSwipePx = 36;
+constexpr int kStablePx = 24;
+constexpr int kJumpPx = 70;
+constexpr uint8_t kNeedStable = 3;
+
+bool fingerDown() {
+  // AXS15231 IRQ is low while a finger is on the glass. The display refresh
+  // can corrupt an I2C read into a fake point when the line is idle.
+  return digitalRead(PIN_TOUCH_IRQ) == LOW;
+}
 
 bool axsPresent(uint8_t addr) {
   static const uint8_t cmd[11] = {0xB5, 0xAB, 0xA5, 0x5A, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00};
@@ -35,7 +47,7 @@ bool readPoint(int& x, int& y) {
   if (Wire1.requestFrom(g_addr, (uint8_t)8) != 8) return false;
   uint8_t d[8];
   for (int i = 0; i < 8; i++) d[i] = Wire1.read();
-  if (d[0] != 0 || d[1] == 0) return false;
+  if (d[0] != 0 || d[1] == 0 || d[1] > 2) return false;
   // The controller's X runs along the 640px glass and starts at the bottom.
   // Y runs across the 180px width. Swapping only when X is past 180 left the
   // lower part of the glass reporting a point near the top of the screen.
@@ -59,34 +71,71 @@ void noteSwipe() {
   g_swipe = dx < 0 ? 1 : -1;
 }
 
+void holdPoint(lv_indev_data_t* data, bool pressed) {
+  data->state = pressed ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL;
+  data->point.x = g_lastX;
+  data->point.y = g_lastY;
+}
+
+void releaseContact() {
+  if (g_tracking) noteSwipe();
+  g_tracking = false;
+  g_stable = 0;
+}
+
 void readCb(lv_indev_drv_t*, lv_indev_data_t* data) {
+  if (!fingerDown()) {
+    releaseContact();
+    holdPoint(data, false);
+    return;
+  }
   int x = 0;
   int y = 0;
-  if (readPoint(x, y)) {
-    if (!g_tracking) {
-      g_tracking = true;
-      g_dragged = false;
-      g_startX = x;
-      g_startY = y;
-    }
-    g_lastX = x;
-    g_lastY = y;
-    int dx = x - g_startX;
-    int dy = y - g_startY;
+  if (!readPoint(x, y)) {
+    holdPoint(data, g_tracking);
+    return;
+  }
+  if (!g_tracking) {
+    int dx = x - g_candX;
+    int dy = y - g_candY;
     if (dx < 0) dx = -dx;
     if (dy < 0) dy = -dy;
-    if (dx > 14 || dy > 14) g_dragged = true;
-    g_lastActivity = millis();
-    data->state = LV_INDEV_STATE_PR;
-    data->point.x = x;
-    data->point.y = y;
+    if (g_stable == 0 || dx > kStablePx || dy > kStablePx) {
+      g_candX = x;
+      g_candY = y;
+      g_stable = 1;
+    } else {
+      g_stable++;
+    }
+    if (g_stable < kNeedStable) {
+      holdPoint(data, false);
+      return;
+    }
+    g_tracking = true;
+    g_dragged = false;
+    g_startX = x;
+    g_startY = y;
   } else {
-    if (g_tracking) noteSwipe();
-    g_tracking = false;
-    data->state = LV_INDEV_STATE_REL;
-    data->point.x = g_lastX;
-    data->point.y = g_lastY;
+    int jx = x - g_lastX;
+    int jy = y - g_lastY;
+    if (jx < 0) jx = -jx;
+    if (jy < 0) jy = -jy;
+    if (jx > kJumpPx || jy > kJumpPx) {
+      holdPoint(data, true);
+      return;
+    }
   }
+  g_lastX = x;
+  g_lastY = y;
+  int dx = x - g_startX;
+  int dy = y - g_startY;
+  if (dx < 0) dx = -dx;
+  if (dy < 0) dy = -dy;
+  if (dx > 14 || dy > 14) g_dragged = true;
+  g_lastActivity = millis();
+  data->state = LV_INDEV_STATE_PR;
+  data->point.x = x;
+  data->point.y = y;
 }
 }  // namespace
 
@@ -105,7 +154,7 @@ uint32_t touchLastActivityMs() { return g_lastActivity; }
 void touchBegin() {
   Wire1.begin(PIN_TOUCH_SDA, PIN_TOUCH_SCL);
   Wire1.setClock(100000);
-  pinMode(PIN_TOUCH_IRQ, INPUT);
+  pinMode(PIN_TOUCH_IRQ, INPUT_PULLUP);
 
   Serial.println("Touch bus scan:");
   for (uint8_t addr = 1; addr < 127; addr++) {
@@ -130,7 +179,7 @@ void touchBegin() {
     }
   }
   if (g_addr) Serial.printf("Touch AXS15231 at 0x%02X\n", g_addr);
-  else Serial.println("Touch controller not found; BOOT button still changes pages");
+  else Serial.println("Touch controller not found");
 
   static lv_indev_drv_t indev;
   lv_indev_drv_init(&indev);

@@ -2,7 +2,7 @@
 
 Portrait firmware for the [LilyGO T-Display-S3-Long](https://github.com/Xinyuan-LilyGO/T-Display-S3-Long) (ESP32-S3, 180×640). It replaces the ESPHome package in `TFT_LCD/T-Display-Long/V1/Firmware/ESPHome` with a PlatformIO build: LVGL on the panel, the same sensor set, and MQTT discovery so Home Assistant still receives the readings.
 
-The screen is a vertical stack of three pages. Swipe, or tap BOOT, to move between them. Hold a temperature, humidity, or gas row to adjust its offset, then tap outside the panel to close it.
+The screen is a vertical stack of three pages. Swipe to move between them. Hold a temperature, humidity, or gas row to adjust its offset, then tap outside the panel to close it.
 
 1. **Air** — AQI category and color, temperature, humidity, CO2, particles, VOC.
 2. **Gases** — CO, NO2, H2, methane, ethanol, ammonia, NOx, and pressure, each with the same color bands as the ESPHome UI.
@@ -74,7 +74,7 @@ While the broker is unreachable, AQI samples are stored in PSRAM and published t
 | Touch SDA, SCL, IRQ | 15, 10, 11 |
 | Sensor SDA, SCL (Qwiic) | 9, 48 |
 | LED ring, 11 × GRB | 47 |
-| BOOT / page | 0 |
+| BOOT | 0 |
 
 Sensors on the Qwiic bus: SCD4x `0x62`, SEN55 `0x69`, BME280 `0x76` or `0x77`, MiCS-4514 `0x75`. The MiCS reading is the same ppm conversion the ESPHome component used, including the 3-minute warmup. It is not a safety alarm.
 
