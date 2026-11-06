@@ -720,7 +720,7 @@ void NetworkService::publishStates() {
     snprintf(topic, sizeof(topic), "%s/sensor/%s", root_, ent.key);
     float number = 0;
     if (!lookup(ent.key, r, wifi, number)) {
-      mqtt_.publish(topic, "unavailable", true);
+      mqtt_.publish(topic, "None", true);
     } else {
       snprintf(value, sizeof(value), "%.*f", ent.decimals, number);
       mqtt_.publish(topic, value, true);
@@ -728,7 +728,7 @@ void NetworkService::publishStates() {
     displayPump();
   }
   snprintf(topic, sizeof(topic), "%s/text/voc_quality", root_);
-  mqtt_.publish(topic, r.senOk ? r.vocQuality : "unavailable", true);
+  mqtt_.publish(topic, r.senOk ? r.vocQuality : "None", true);
   snprintf(topic, sizeof(topic), "%s/text/firmware_version", root_);
   mqtt_.publish(topic, HALO_FW_VERSION, true);
   publishFirmwareUpdate();
