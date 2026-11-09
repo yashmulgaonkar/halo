@@ -44,10 +44,10 @@ const SensorEnt kSensors[] = {
     {"bme280_temperature", "BME280 Temperature", "°C", "temperature", nullptr, "measurement", 1},
     {"bme280_pressure", "BME280 Pressure", "hPa", "pressure", nullptr, "measurement", 1},
     {"bme280_humidity", "BME280 Humidity", "%", "humidity", nullptr, "measurement", 0},
-    {"pm1", "PM <1um Weight concentration", "ug/m3", nullptr, nullptr, "measurement", 1},
-    {"pm25", "PM <2.5um Weight concentration", "ug/m3", "pm25", nullptr, "measurement", 1},
-    {"pm4", "PM <4um Weight concentration", "ug/m3", nullptr, nullptr, "measurement", 1},
-    {"pm10", "PM <10um Weight concentration", "ug/m3", "pm10", nullptr, "measurement", 1},
+    {"pm1", "PM <1\xC2\xB5m Weight concentration", "\xC2\xB5g/m\xC2\xB3", nullptr, nullptr, "measurement", 1},
+    {"pm25", "PM <2.5\xC2\xB5m Weight concentration", "\xC2\xB5g/m\xC2\xB3", "pm25", nullptr, "measurement", 1},
+    {"pm4", "PM <4\xC2\xB5m Weight concentration", "\xC2\xB5g/m\xC2\xB3", nullptr, nullptr, "measurement", 1},
+    {"pm10", "PM <10\xC2\xB5m Weight concentration", "\xC2\xB5g/m\xC2\xB3", "pm10", nullptr, "measurement", 1},
     {"sen55_temperature", "SEN55 Temperature", "°C", "temperature", nullptr, "measurement", 1},
     {"sen55_humidity", "SEN55 Humidity", "%", "humidity", nullptr, "measurement", 0},
     {"sen55_voc", "SEN55 VOC", nullptr, nullptr, nullptr, "measurement", 0},
@@ -720,7 +720,7 @@ void NetworkService::publishStates() {
     snprintf(topic, sizeof(topic), "%s/sensor/%s", root_, ent.key);
     float number = 0;
     if (!lookup(ent.key, r, wifi, number)) {
-      mqtt_.publish(topic, "unavailable", true);
+      mqtt_.publish(topic, "None", true);
     } else {
       snprintf(value, sizeof(value), "%.*f", ent.decimals, number);
       mqtt_.publish(topic, value, true);
@@ -728,7 +728,7 @@ void NetworkService::publishStates() {
     displayPump();
   }
   snprintf(topic, sizeof(topic), "%s/text/voc_quality", root_);
-  mqtt_.publish(topic, r.senOk ? r.vocQuality : "unavailable", true);
+  mqtt_.publish(topic, r.senOk ? r.vocQuality : "None", true);
   snprintf(topic, sizeof(topic), "%s/text/firmware_version", root_);
   mqtt_.publish(topic, HALO_FW_VERSION, true);
   publishFirmwareUpdate();
