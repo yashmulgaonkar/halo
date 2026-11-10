@@ -16,6 +16,8 @@ bool g_tracking = false;
 int g_swipe = 0;
 uint32_t g_lastActivity = 0;
 bool g_dragged = false;
+int g_runX = 0;
+int g_runY = 0;
 int g_candX = 0;
 int g_candY = 0;
 uint8_t g_stable = 0;
@@ -114,21 +116,28 @@ void readCb(lv_indev_drv_t*, lv_indev_data_t* data) {
     int dy = y - g_candY;
     if (dx < 0) dx = -dx;
     if (dy < 0) dy = -dy;
-    if (g_stable == 0 || dx > kStablePx || dy > kStablePx) {
-      g_candX = x;
-      g_candY = y;
+    // Compare with the previous sample, not the first one. A quick swipe moves
+    // well over kStablePx per sample along X, which used to restart the count
+    // so the swipe was never tracked. Stray reads still jump in Y or reverse
+    // by more than a finger can travel in one sample.
+    if (g_stable == 0 || dx > kJumpPx || dy > kStablePx) {
+      g_runX = x;
+      g_runY = y;
       g_stable = 1;
     } else {
       g_stable++;
     }
+    g_candX = x;
+    g_candY = y;
     if (g_stable < kNeedStable) {
       holdPoint(data, false);
       return;
     }
     g_tracking = true;
     g_dragged = false;
-    g_startX = x;
-    g_startY = y;
+    // Measure the swipe from where the finger landed.
+    g_startX = g_runX;
+    g_startY = g_runY;
   } else {
     int jx = x - g_lastX;
     int jy = y - g_lastY;
