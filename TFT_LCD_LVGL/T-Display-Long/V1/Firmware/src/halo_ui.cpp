@@ -299,6 +299,15 @@ void HaloUi::buildAir(lv_obj_t* tile) {
   aqiValue_ = text(aqi, "--", &lv_font_montserrat_28, kText);
   aqiCat_ = text(aqi, "Waiting for air", &lv_font_montserrat_14, kMuted);
 
+  lv_obj_t* co2 = card(tile, 52);
+  lv_obj_set_style_pad_left(co2, 16, 0);
+  co2Rail_ = statusRail(co2);
+  pinLeft(text(co2, "CO2", &lv_font_montserrat_14, kMuted), -9);
+  pinLeft(text(co2, "ppm", &lv_font_montserrat_12, kMuted), 9);
+  co2Value_ = text(co2, "--", &lv_font_montserrat_28, kText);
+  lv_obj_add_flag(co2Value_, LV_OBJ_FLAG_IGNORE_LAYOUT);
+  lv_obj_align(co2Value_, LV_ALIGN_RIGHT_MID, -2, 0);
+
   lv_obj_t* climate = lv_obj_create(tile);
   lv_obj_set_width(climate, lv_pct(100));
   lv_obj_set_height(climate, 74);
@@ -313,24 +322,30 @@ void HaloUi::buildAir(lv_obj_t* tile) {
   lv_obj_set_width(temp, 80);
   lv_obj_set_style_pad_left(temp, 16, 0);
   tempRail_ = statusRail(temp);
+  lv_obj_set_height(tempRail_, 22);  // same length as the PRES and PM rails
   lv_obj_set_flex_flow(temp, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(temp, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
   lv_obj_t* tempTag = text(temp, "TEMP", &lv_font_montserrat_12, kMuted);
   lv_obj_set_style_translate_y(tempTag, 8, 0);
   tempValue_ = text(temp, "--", &lv_font_montserrat_28, kText);
   tempUnit_ = text(temp, "F", &lv_font_montserrat_12, kMuted);
+  lv_obj_set_style_translate_y(tempValue_, 3, 0);
+  lv_obj_set_style_translate_y(tempUnit_, -5, 0);
   watchTap(temp, 0);
 
   lv_obj_t* hum = card(climate, 74);
   lv_obj_set_width(hum, 78);
   lv_obj_set_style_pad_left(hum, 16, 0);
   humRail_ = statusRail(hum);
+  lv_obj_set_height(humRail_, 22);  // same length as the PRES and PM rails
   lv_obj_set_flex_flow(hum, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(hum, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
   lv_obj_t* humTag = text(hum, "HUMIDITY", &lv_font_montserrat_12, kMuted);
   lv_obj_set_style_translate_y(humTag, 8, 0);
   humValue_ = text(hum, "--", &lv_font_montserrat_28, kText);
-  text(hum, "%", &lv_font_montserrat_12, kMuted);
+  lv_obj_set_style_translate_y(humValue_, 3, 0);
+  lv_obj_t* humUnit = text(hum, "%", &lv_font_montserrat_12, kMuted);
+  lv_obj_set_style_translate_y(humUnit, -5, 0);
   watchTap(hum, 1);
 
   lv_obj_t* pressure = card(tile, 50);
@@ -341,15 +356,6 @@ void HaloUi::buildAir(lv_obj_t* tile) {
   pressureValue_ = text(pressure, "--", &lv_font_montserrat_28, kText);
   lv_obj_add_flag(pressureValue_, LV_OBJ_FLAG_IGNORE_LAYOUT);
   lv_obj_align(pressureValue_, LV_ALIGN_RIGHT_MID, -2, 0);
-
-  lv_obj_t* co2 = card(tile, 52);
-  lv_obj_set_style_pad_left(co2, 16, 0);
-  co2Rail_ = statusRail(co2);
-  pinLeft(text(co2, "CO2", &lv_font_montserrat_14, kMuted), -9);
-  pinLeft(text(co2, "ppm", &lv_font_montserrat_12, kMuted), 9);
-  co2Value_ = text(co2, "--", &lv_font_montserrat_28, kText);
-  lv_obj_add_flag(co2Value_, LV_OBJ_FLAG_IGNORE_LAYOUT);
-  lv_obj_align(co2Value_, LV_ALIGN_RIGHT_MID, -2, 0);
 
   const char* pmNames[] = {"PM1", "PM2.5", "PM4", "PM10"};
   for (int i = 0; i < 4; i++) {
