@@ -25,7 +25,7 @@ class NetworkService {
   void onStaReady();
   void connectMqtt();
   void publishDiscovery();
-  void publishStates();
+  void publishStates(bool force = false);
   void publishRing();
   void publishBacklight();
   void onMqtt(char* topic, uint8_t* payload, unsigned int length);
@@ -68,6 +68,7 @@ class NetworkService {
   bool updating_ = false;
   uint32_t lastMqttTryMs_ = 0;
   uint32_t lastStateMs_ = 0;
+  uint32_t lastResyncMs_ = 0;
   uint32_t lastDiscoveryMs_ = 0;
   uint32_t wifiDownSince_ = 0;
   uint32_t wifiRetryMs_ = 0;

@@ -274,6 +274,27 @@ bool lookup(const char* key, const Readings& r, bool wifi, float& out) {
   return false;
 }
 
+// Smallest move worth sending to Home Assistant. Sub-deadband jitter (PM flickering by
+// 0.1, CO2 by a couple of ppm) otherwise becomes a recorder row every 10 seconds.
+// 0 means "any change at the published precision". computed_aqi is handled separately:
+// it is derived from PM2.5 alone, so it is only re-sent alongside a PM2.5 update.
+float deadband(const char* key, float last) {
+  if (strncmp(key, "pm", 2) == 0) return fmaxf(0.5f, fabsf(last) * 0.05f);
+  if (strcmp(key, "co2") == 0) return 5;
+  if (strcmp(key, "nowcast_aqi") == 0) return 1;
+  if (strcmp(key, "sen55_temperature") == 0 || strcmp(key, "bme280_temperature") == 0) return 0.2f;
+  if (strcmp(key, "sen55_humidity") == 0 || strcmp(key, "bme280_humidity") == 0) return 1;
+  return 0;
+}
+
+// Even below the deadband, re-send anything that has drifted this often so HA converges.
+constexpr uint32_t kResyncMs = 15UL * 60UL * 1000UL;
+
+constexpr size_t kSensorCount = sizeof(kSensors) / sizeof(kSensors[0]);
+bool sentOk[kSensorCount] = {};
+bool sentAny[kSensorCount] = {};
+float sentValue[kSensorCount] = {};
+
 bool isOn(const char* body) {
   return strcmp(body, "ON") == 0 || strcmp(body, "on") == 0 || strcmp(body, "true") == 0 || strcmp(body, "1") == 0;
 }
@@ -437,7 +458,7 @@ void NetworkService::connectMqtt() {
   mqtt_.subscribe(cmdFilter_);
   mqtt_.publish(statusTopic_, "online", true);
   publishDiscovery();
-  publishStates();
+  publishStates(true);
   publishRing();
   publishBacklight();
   sensors().history().startFlush();
@@ -711,20 +732,46 @@ void NetworkService::publishDiscovery() {
   }
 }
 
-void NetworkService::publishStates() {
+void NetworkService::publishStates(bool force) {
   const Readings& r = sensors().latest();
   bool wifi = wifiConnected();
   char topic[80];
   char value[24];
-  for (const SensorEnt& ent : kSensors) {
-    snprintf(topic, sizeof(topic), "%s/sensor/%s", root_, ent.key);
+  uint32_t now = millis();
+  bool resync = force || now - lastResyncMs_ >= kResyncMs;
+  if (resync) lastResyncMs_ = now;
+  bool pm25Sent = false;  // kSensors lists pm25 before computed_aqi
+  for (size_t i = 0; i < kSensorCount; i++) {
+    const SensorEnt& ent = kSensors[i];
     float number = 0;
-    if (!lookup(ent.key, r, wifi, number)) {
+    bool ok = lookup(ent.key, r, wifi, number);
+    if (ok) {
+      // Compare at the published precision so float noise below it never counts as a change.
+      float p = powf(10.0f, ent.decimals);
+      number = roundf(number * p) / p;
+    }
+    bool send = force || !sentAny[i] || ok != sentOk[i];
+    if (!send && ok) {
+      float moved = fabsf(number - sentValue[i]);
+      if (strcmp(ent.key, "computed_aqi") == 0) {
+        send = moved > 0 && (pm25Sent || resync);
+      } else {
+        float band = deadband(ent.key, sentValue[i]);
+        send = band > 0 ? (moved >= band - 1e-4f || (resync && moved > 0)) : moved > 0;
+      }
+    }
+    if (!send) continue;
+    if (strcmp(ent.key, "pm25") == 0) pm25Sent = true;
+    snprintf(topic, sizeof(topic), "%s/sensor/%s", root_, ent.key);
+    if (!ok) {
       mqtt_.publish(topic, "None", true);
     } else {
       snprintf(value, sizeof(value), "%.*f", ent.decimals, number);
       mqtt_.publish(topic, value, true);
     }
+    sentAny[i] = true;
+    sentOk[i] = ok;
+    sentValue[i] = number;
     displayPump();
   }
   snprintf(topic, sizeof(topic), "%s/text/voc_quality", root_);
@@ -931,12 +978,12 @@ void NetworkService::handleCmd(const char* cmd, const char* body) {
   if (save) {
     cfg.save();
     sensors().syncBias();
-    if (mqtt_.connected()) publishStates();
+    if (mqtt_.connected()) publishStates(true);
   }
 }
 
 void NetworkService::publishTelemetry() {
-  if (mqtt_.connected()) publishStates();
+  if (mqtt_.connected()) publishStates(true);
 }
 
 void NetworkService::sendSetup() {
