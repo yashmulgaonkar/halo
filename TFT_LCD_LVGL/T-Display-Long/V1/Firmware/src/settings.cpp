@@ -1,6 +1,7 @@
 #include "settings.h"
 
 #include <Preferences.h>
+#include <math.h>
 #include <string.h>
 
 namespace {
@@ -37,6 +38,11 @@ void Settings::defaults() {
   historyDays = 3.0f;
   pageRotation = false;
   pageIntervalS = 30;
+  nightMode = false;
+  nightLat = NAN;
+  nightLon = NAN;
+  nightStartMin = 0xFFFF;
+  nightEndMin = 0xFFFF;
 }
 
 const char* Settings::tempUnitName() const {
@@ -84,6 +90,11 @@ void Settings::load() {
   historyDays = g_prefs.getFloat("hdays", historyDays);
   pageRotation = g_prefs.getBool("prot", pageRotation);
   pageIntervalS = g_prefs.getUShort("pint", pageIntervalS);
+  nightMode = g_prefs.getBool("night", nightMode);
+  nightLat = g_prefs.getFloat("nLat", nightLat);
+  nightLon = g_prefs.getFloat("nLon", nightLon);
+  nightStartMin = g_prefs.getUShort("nStart", nightStartMin);
+  nightEndMin = g_prefs.getUShort("nEnd", nightEndMin);
   g_prefs.end();
   if (tz[0] == 0) copyStr(tz, sizeof(tz), "PST8PDT,M3.2.0,M11.1.0");
   if (mqttPort == 0) mqttPort = 1883;
@@ -120,5 +131,10 @@ void Settings::save() const {
   g_prefs.putFloat("hdays", historyDays);
   g_prefs.putBool("prot", pageRotation);
   g_prefs.putUShort("pint", pageIntervalS);
+  g_prefs.putBool("night", nightMode);
+  g_prefs.putFloat("nLat", nightLat);
+  g_prefs.putFloat("nLon", nightLon);
+  g_prefs.putUShort("nStart", nightStartMin);
+  g_prefs.putUShort("nEnd", nightEndMin);
   g_prefs.end();
 }

@@ -7,6 +7,7 @@
 #include "halo_ui.h"
 #include "halo_version.h"
 #include "network_service.h"
+#include "night_mode.h"
 #include "ring_light.h"
 #include "sensor_hub.h"
 #include "settings.h"
@@ -46,6 +47,7 @@ void loop() {
   sensors().poll(network().mqttConnected());
   ring().markStage(2, micros() - mark);
   ring().loop(settings().startupBlink, network().mqttConnected(), network().wifiConnected());
+  nightMode().loop();
   const Readings& air = sensors().latest();
   uint8_t airR = 0;
   uint8_t airG = 0;
