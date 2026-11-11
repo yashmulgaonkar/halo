@@ -266,11 +266,55 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
       - name: Download LVGL Firmware Artifact
         uses: actions/download-artifact@v4
         with:
           name: firmware-lvgl
           path: firmware-lvgl
+
+      - name: Build Release Notes
+        # Notes are a convenience. If this step fails, the release still goes out
+        # with the fallback text written below.
+        continue-on-error: true
+        env:
+          NEW_TAG: lvgl-${{ needs.get-lvgl-version.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "Browser-flash image for HALO LVGL firmware (new UI). firmware.bin is the Wi-Fi update used by the device portal and Home Assistant. The same files are on the installer." > release-notes.md
+          # Notes list every commit that touched the LVGL firmware since the
+          # previous lvgl-* release, including ones pushed with [skip release].
+          prev=$(git tag -l 'lvgl-*' --sort=-v:refname | grep -vx "${NEW_TAG}" | head -n1 || true)
+          if [ -n "${prev}" ]; then
+            range="${prev}..${GITHUB_SHA}"
+          else
+            range="-n 20 ${GITHUB_SHA}"
+          fi
+          changes=$(git log --no-merges --pretty='- %s' ${range} -- TFT_LCD_LVGL .github/workflows/tft_lcd_ota-update.yml \
+            | sed -E 's/( *\[skip (release|ci)\])+$//')
+          {
+            echo "## What's changed"
+            echo
+            if [ -n "${changes}" ]; then
+              echo "${changes}"
+            else
+              echo "- Build only, no firmware changes."
+            fi
+            echo
+            if [ -n "${prev}" ]; then
+              echo "Full diff: https://github.com/${REPO}/compare/${prev}...${NEW_TAG}"
+              echo
+            fi
+            echo "Browser-flash image for HALO LVGL firmware (new UI). firmware.bin is the Wi-Fi update used by the device portal and Home Assistant. The same files are on the installer."
+          } > release-notes.tmp
+          mv release-notes.tmp release-notes.md
+          cat release-notes.md
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -278,7 +322,7 @@ jobs:
           tag_name: lvgl-${{ needs.get-lvgl-version.outputs.version }}
           target_commitish: ${{ github.sha }}
           name: HALO LVGL firmware (new UI) ${{ needs.get-lvgl-version.outputs.version }}
-          body: Browser-flash image for HALO LVGL firmware (new UI). firmware.bin is the Wi-Fi update used by the device portal and Home Assistant. The same files are on the installer.
+          body_path: release-notes.md
           files: firmware-lvgl/*
           fail_on_unmatched_files: true
         env:
