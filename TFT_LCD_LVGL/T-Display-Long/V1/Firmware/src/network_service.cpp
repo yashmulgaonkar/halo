@@ -17,6 +17,7 @@
 #include "backlight.h"
 #include "display_port.h"
 #include "halo_version.h"
+#include "night_mode.h"
 #include "ring_light.h"
 #include "sensor_hub.h"
 #include "settings.h"
@@ -170,6 +171,8 @@ const char kPortalCss[] =
     "button.warn{background:#f07167}"
     ".actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:18px}"
     "form.inline{display:inline}"
+    ".check{display:flex;align-items:center;gap:8px;color:#e6e9ef;font-size:14px;margin-top:14px}"
+    ".check input{width:auto;margin:0;accent-color:#3ddc97}"
     ".panel{background:#141820;border-radius:18px;padding:16px 16px 18px}"
     ".split{display:grid;grid-template-columns:1fr 1fr;gap:10px}"
     "@media(max-width:640px){.hero b{font-size:52px}.split{grid-template-columns:1fr}}";
@@ -530,6 +533,7 @@ void NetworkService::publishDiscovery() {
   sw("co2_asc", "CO2 Auto Calibration");
   sw("history", "AQI History Enable Buffering");
   sw("page_rotation", "Auto Page Rotation");
+  sw("night_mode", "Auto Night Mode");
 
   auto num = [&](const char* key, const char* name, float minV, float maxV, float step, const char* unit) {
     JsonDocument doc;
@@ -744,6 +748,7 @@ void NetworkService::publishStates() {
   pubSwitch("co2_asc", cfg.co2Asc);
   pubSwitch("history", cfg.historyEnabled);
   pubSwitch("page_rotation", cfg.pageRotation);
+  pubSwitch("night_mode", cfg.nightMode);
 
   auto pubNum = [&](const char* key, float number, int decimals) {
     snprintf(topic, sizeof(topic), "%s/number/%s", root_, key);
@@ -825,6 +830,10 @@ void NetworkService::handleCmd(const char* cmd, const char* body) {
     save = true;
   } else if (strcmp(cmd, "switch/history") == 0) {
     cfg.historyEnabled = isOn(body);
+    save = true;
+  } else if (strcmp(cmd, "switch/night_mode") == 0) {
+    cfg.nightMode = isOn(body);
+    nightMode().refresh();
     save = true;
   } else if (strcmp(cmd, "switch/page_rotation") == 0) {
     cfg.pageRotation = isOn(body);
@@ -977,11 +986,76 @@ void NetworkService::appendRingForm(String& page) {
   page += "<label>Brightness</label><input name=brightness type=range min=1 max=255 value=\"";
   page += String(bright);
   page += "\">";
+  const Settings& cfg = settings();
+  page += "<input type=hidden name=night_form value=1>";
+  page += "<label class=check><input type=checkbox name=night value=1";
+  if (cfg.nightMode) page += " checked";
+  page += ">Auto Night Mode</label>";
+  page += "<p class=sub>Sunset to sunrise: ring at 5%, screen at 15%. Daytime levels come back at sunrise.";
+  page += nightStatus();
+  page += "</p><div class=split>";
+  char coord[16] = "";
+  if (!isnan(cfg.nightLat)) snprintf(coord, sizeof(coord), "%.3f", cfg.nightLat);
+  page += "<div><label>Latitude (optional)</label><input name=lat inputmode=decimal placeholder=\"from timezone\" value=\"";
+  page += coord;
+  page += "\"></div>";
+  coord[0] = 0;
+  if (!isnan(cfg.nightLon)) snprintf(coord, sizeof(coord), "%.3f", cfg.nightLon);
+  page += "<div><label>Longitude (optional, west is negative)</label><input name=lon inputmode=decimal placeholder=\"from timezone\" value=\"";
+  page += coord;
+  page += "\"></div></div>";
   page += "<div class=actions><button type=submit>Apply brightness</button>";
   page += "<button class=warn type=submit name=mode value=off>Turn ring off</button></div></form>";
 }
 
+String NetworkService::nightStatus() {
+  const Settings& cfg = settings();
+  float lat, lon;
+  bool estimated;
+  nightMode().location(lat, lon, estimated);
+  String s;
+  char buf[96];
+  time_t sunset, sunrise;
+  if (nightMode().nextTimes(sunset, sunrise)) {
+    auto clock = [&](time_t t, char* out, size_t n) {
+      struct tm lt;
+      localtime_r(&t, &lt);
+      strftime(out, n, cfg.clock24h ? "%H:%M" : "%I:%M %p", &lt);
+      if (!cfg.clock24h && out[0] == '0') memmove(out, out + 1, strlen(out));
+    };
+    char setText[12], riseText[12];
+    clock(sunset, setText, sizeof(setText));
+    clock(sunrise, riseText, sizeof(riseText));
+    if (!cfg.nightMode) snprintf(buf, sizeof(buf), " Sunset %s, sunrise %s.", setText, riseText);
+    else if (nightMode().active()) snprintf(buf, sizeof(buf), " <b>On now</b> until sunrise at %s.", riseText);
+    else snprintf(buf, sizeof(buf), " Starts at sunset, %s.", setText);
+    s += buf;
+  } else {
+    s += " Sun times appear once the clock is set.";
+  }
+  snprintf(buf, sizeof(buf), " Location %.2f, %.2f%s.", lat, lon, estimated ? " (estimated from timezone)" : "");
+  s += buf;
+  return s;
+}
+
 void NetworkService::handleRing() {
+  if (server_.hasArg("night_form")) {
+    Settings& cfg = settings();
+    cfg.nightMode = server_.hasArg("night");
+    auto coord = [&](const char* name, float limit) {
+      String v = server_.arg(name);
+      v.trim();
+      if (v.length() == 0) return (float)NAN;
+      float f = v.toFloat();
+      return fabsf(f) <= limit ? f : (float)NAN;
+    };
+    cfg.nightLat = coord("lat", 90);
+    cfg.nightLon = coord("lon", 180);
+    if (isnan(cfg.nightLat) || isnan(cfg.nightLon)) cfg.nightLat = cfg.nightLon = NAN;
+    cfg.save();
+    nightMode().refresh();
+    if (mqtt_.connected()) publishStates();
+  }
   if (server_.hasArg("brightness")) {
     int bright = server_.arg("brightness").toInt();
     if (bright < 1) bright = 1;

@@ -29,6 +29,9 @@ struct Settings {
   float historyDays;
   bool pageRotation;
   uint16_t pageIntervalS;
+  bool nightMode;
+  float nightLat;  // NAN = estimate from the timezone
+  float nightLon;
 
   void defaults();
   void load();

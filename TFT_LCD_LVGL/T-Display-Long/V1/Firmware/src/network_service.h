@@ -33,6 +33,7 @@ class NetworkService {
   void sendSetup();
   void sendStatus();
   void appendRingForm(String& page);
+  String nightStatus();
   void handleSave();
   void handleRing();
   void handleUpdate();
