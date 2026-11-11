@@ -507,7 +507,7 @@ void HaloUi::refresh(const UiStatus& status) {
 
   if (r.co2Ok) {
     char buf[16];
-    lv_color_t co2 = upperBand(r.co2, 600, 1000, 1500);
+    lv_color_t co2 = upperBand(r.co2, 1200, 2000, 5000);
     snprintf(buf, sizeof(buf), "%.0f", r.co2);
     setReading(co2Value_, buf);
     lv_obj_set_style_text_color(co2Value_, co2, 0);

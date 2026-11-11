@@ -1057,7 +1057,7 @@ void NetworkService::sendStatus() {
     shownTemp = r.senTempC + 273.15f;
     tempUnit = "K";
   }
-  metric(page, "CO2", readingText(r.co2Ok, r.co2, 0), "ppm", r.co2Ok ? bandCss(r.co2, 600, 1000, 1500) : "#93a0b5");
+  metric(page, "CO2", readingText(r.co2Ok, r.co2, 0), "ppm", r.co2Ok ? bandCss(r.co2, 1200, 2000, 5000) : "#93a0b5");
   metric(page, "TEMP", readingText(r.senOk, shownTemp, 1), tempUnit, r.senOk ? tempCss(r.senTempC) : "#93a0b5");
   metric(page, "HUMIDITY", readingText(r.senOk, r.senHum, 0), "%", r.senOk ? humCss(r.senHum) : "#93a0b5");
   metric(page, "PRESSURE", readingText(r.bmeOk, r.bmePressureHpa, 0), "hPa", r.bmeOk ? "#f4f7fb" : "#93a0b5");
