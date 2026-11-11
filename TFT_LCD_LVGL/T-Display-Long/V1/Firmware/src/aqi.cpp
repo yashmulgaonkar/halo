@@ -110,7 +110,7 @@ bool haloRingColor(bool aqiOk, int aqi, bool evacuate, bool co2Ok, float co2, ui
     int level = 3;
     if (co2 <= 1200) level = 0;
     else if (co2 <= 2000) level = 1;
-    else if (co2 <= 5000) level = 2;
+    else if (co2 <= 3000) level = 2;
     if (level > rank) rank = level;
   }
   // Fuller than the on-screen pastels. The green die is much stronger than red or blue.
