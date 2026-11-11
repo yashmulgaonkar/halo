@@ -8,6 +8,7 @@
 #include <time.h>
 
 #include "aqi.h"
+#include "event_log.h"
 #include "board_pins.h"
 #include "halo_version.h"
 #include "network_service.h"
@@ -157,13 +158,14 @@ void HaloUi::updateDots() {
   }
 }
 
-void HaloUi::showPage(int page) {
+void HaloUi::showPage(int page, const char* why) {
   if (page < 0) page = 2;
   if (page > 2) page = 0;
   // Neighbors slide. Wrapping from the last page to the first would travel
   // through the page in between, so that jump stays a snap.
   int distance = page - page_;
   if (distance < 0) distance = -distance;
+  if (page != page_) evlog("PAGE %d->%d by %s", page_, page, why);
   page_ = page;
   if (tv_) lv_obj_set_tile_id(tv_, page_, 0, distance == 1 ? LV_ANIM_ON : LV_ANIM_OFF);
   lastAutoMs_ = millis();
@@ -172,19 +174,19 @@ void HaloUi::showPage(int page) {
 
 void HaloUi::swapDataPages() {
   // Air is screen 1, gases is screen 2. The device page stays out of the rotation.
-  showPage(page_ == 0 ? 1 : 0);
+  showPage(page_ == 0 ? 1 : 0, "auto-rotate");
 }
 
 void HaloUi::nextPage() {
   const Settings& cfg = settings();
   if (cfg.pageRotation && cfg.pageIntervalS > 0) swapDataPages();
-  else showPage(page_ + 1);
+  else showPage(page_ + 1, "swipe-left");
 }
 
 void HaloUi::prevPage() {
   const Settings& cfg = settings();
   if (cfg.pageRotation && cfg.pageIntervalS > 0) swapDataPages();
-  else showPage(page_ - 1);
+  else showPage(page_ - 1, "swipe-right");
 }
 
 void HaloUi::begin() {
@@ -204,7 +206,10 @@ void HaloUi::begin() {
     HaloUi* self = static_cast<HaloUi*>(lv_event_get_user_data(e));
     lv_obj_t* active = lv_tileview_get_tile_act(self->tv_);
     for (int i = 0; i < 3; i++) {
-      if (self->tiles_[i] == active) self->page_ = i;
+      if (self->tiles_[i] == active && self->page_ != i) {
+        evlog("PAGE %d->%d by tileview", self->page_, i);
+        self->page_ = i;
+      }
     }
     self->updateDots();
     self->lastAutoMs_ = millis();
@@ -594,6 +599,7 @@ void HaloUi::onBiasClose(lv_event_t* e) {
 }
 
 void HaloUi::closeBias() {
+  if (biasEdit_ >= 0) evlog("BIAS close %d", biasEdit_);
   biasEdit_ = -1;
   if (biasShade_ != nullptr) lv_obj_add_flag(biasShade_, LV_OBJ_FLAG_HIDDEN);
 }
@@ -617,7 +623,9 @@ void HaloUi::showBiasValue() {
 
 void HaloUi::openBias(int id) {
   if (id < 0 || id > 8) return;
+  evlog("BIAS open %d", id);
   biasEdit_ = id;
+  biasOpenMs_ = millis();
   if (biasShade_ == nullptr) {
     biasShade_ = lv_obj_create(lv_layer_top());
     lv_obj_set_size(biasShade_, HALO_LCD_W, HALO_LCD_H);
@@ -693,6 +701,12 @@ void HaloUi::stepBias(int dir) {
 }
 
 void HaloUi::loop(const UiStatus& status) {
+  // A phantom press can long-press a row and open the offset editor, which
+  // then blocks swiping. Close an editor that opened during that press.
+  if (touchTakeStuck() && biasEdit_ >= 0 && millis() - biasOpenMs_ < 8000) {
+    evlog("BIAS closed: opened by a phantom press");
+    closeBias();
+  }
   int swipe = touchTakeSwipe();
   if (biasEdit_ < 0) {
     if (swipe > 0) nextPage();
@@ -720,7 +734,7 @@ void HaloUi::loop(const UiStatus& status) {
   uint32_t intervalMs = (uint32_t)cfg.pageIntervalS * 1000UL;
   if (!cfg.pageRotation || cfg.pageIntervalS == 0) {
     if (!heldMain_) {
-      if (page_ != 0) showPage(0);
+      if (page_ != 0) showPage(0, "hold-main");
       heldMain_ = true;
     }
   } else {
