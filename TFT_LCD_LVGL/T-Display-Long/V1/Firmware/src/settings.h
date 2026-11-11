@@ -32,6 +32,8 @@ struct Settings {
   bool nightMode;
   float nightLat;  // NAN = estimate from the timezone
   float nightLon;
+  uint16_t nightStartMin;  // minutes after local midnight; 0xFFFF = follow sunset/sunrise
+  uint16_t nightEndMin;
 
   void defaults();
   void load();

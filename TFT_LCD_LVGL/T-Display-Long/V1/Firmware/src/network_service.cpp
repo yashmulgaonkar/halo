@@ -61,6 +61,14 @@ const SensorEnt kSensors[] = {
     {"history_count", "AQI History Buffered Entries", "entries", nullptr, "diagnostic", "measurement", 0},
 };
 
+// Minutes after midnight as "HH:MM" (state/commands) or in the display clock style.
+void clockText(uint16_t minutes, bool use24h, char* out, size_t n) {
+  unsigned h = minutes / 60;
+  unsigned m = minutes % 60;
+  if (use24h) snprintf(out, n, "%02u:%02u", h, m);
+  else snprintf(out, n, "%u:%02u %s", h % 12 == 0 ? 12 : h % 12, m, h < 12 ? "AM" : "PM");
+}
+
 void copyField(char* dst, size_t n, const String& src) {
   strncpy(dst, src.c_str(), n - 1);
   dst[n - 1] = 0;
@@ -535,6 +543,36 @@ void NetworkService::publishDiscovery() {
   sw("page_rotation", "Auto Page Rotation");
   sw("night_mode", "Auto Night Mode");
 
+  // Optional fixed night hours as HH:MM text, or "sun" to follow sunset and sunrise.
+  auto timeEnt = [&](const char* key, const char* name) {
+    JsonDocument doc;
+    doc["name"] = name;
+    char uid[48];
+    snprintf(uid, sizeof(uid), "%s_%s", deviceId_, key);
+    doc["unique_id"] = uid;
+    char state[80];
+    char cmd[80];
+    snprintf(state, sizeof(state), "%s/text/%s", root_, key);
+    snprintf(cmd, sizeof(cmd), "%s/cmd/text/%s", root_, key);
+    doc["state_topic"] = state;
+    doc["command_topic"] = cmd;
+    doc["min"] = 3;
+    doc["max"] = 5;
+    doc["pattern"] = "^(sun|([01][0-9]|2[0-3]):[0-5][0-9])$";
+    doc["mode"] = "text";
+    doc["entity_category"] = "config";
+    doc["availability_topic"] = statusTopic_;
+    addDevice(doc);
+    char config[96];
+    snprintf(config, sizeof(config), "homeassistant/text/%s/%s/config", deviceId_, key);
+    char body[1200];
+    size_t n = serializeJson(doc, body, sizeof(body));
+    if (n > 0 && n < sizeof(body)) mqtt_.publish(config, body, true);
+    displayPump();
+  };
+  timeEnt("night_start", "Night Mode Start (HH:MM or sun)");
+  timeEnt("night_end", "Night Mode End (HH:MM or sun)");
+
   auto num = [&](const char* key, const char* name, float minV, float maxV, float step, const char* unit) {
     JsonDocument doc;
     doc["name"] = name;
@@ -749,6 +787,14 @@ void NetworkService::publishStates() {
   pubSwitch("history", cfg.historyEnabled);
   pubSwitch("page_rotation", cfg.pageRotation);
   pubSwitch("night_mode", cfg.nightMode);
+  auto pubClock = [&](const char* key, uint16_t minutes) {
+    snprintf(topic, sizeof(topic), "%s/text/%s", root_, key);
+    if (minutes < 1440) clockText(minutes, true, value, sizeof(value));
+    else snprintf(value, sizeof(value), "sun");
+    mqtt_.publish(topic, value, true);
+  };
+  pubClock("night_start", cfg.nightStartMin);
+  pubClock("night_end", cfg.nightEndMin);
 
   auto pubNum = [&](const char* key, float number, int decimals) {
     snprintf(topic, sizeof(topic), "%s/number/%s", root_, key);
@@ -835,6 +881,18 @@ void NetworkService::handleCmd(const char* cmd, const char* body) {
     cfg.nightMode = isOn(body);
     nightMode().refresh();
     save = true;
+  } else if (strcmp(cmd, "text/night_start") == 0 || strcmp(cmd, "text/night_end") == 0) {
+    uint16_t& slot = strcmp(cmd, "text/night_start") == 0 ? cfg.nightStartMin : cfg.nightEndMin;
+    uint16_t minutes;
+    if (strcmp(body, "sun") == 0) {
+      slot = 0xFFFF;
+      nightMode().refresh();
+      save = true;
+    } else if (NightMode::parseClock(body, minutes)) {
+      slot = minutes;
+      nightMode().refresh();
+      save = true;
+    }
   } else if (strcmp(cmd, "switch/page_rotation") == 0) {
     cfg.pageRotation = isOn(body);
     if (cfg.pageRotation && cfg.pageIntervalS == 0) cfg.pageIntervalS = 30;
@@ -996,13 +1054,24 @@ void NetworkService::appendRingForm(String& page) {
   page += "</p><div class=split>";
   char coord[16] = "";
   if (!isnan(cfg.nightLat)) snprintf(coord, sizeof(coord), "%.3f", cfg.nightLat);
-  page += "<div><label>Latitude (optional)</label><input name=lat inputmode=decimal placeholder=\"from timezone\" value=\"";
+  page += "<div><label>Latitude (optional)</label><input name=lat type=number step=any min=-90 max=90 placeholder=\"from timezone\" value=\"";
   page += coord;
   page += "\"></div>";
   coord[0] = 0;
   if (!isnan(cfg.nightLon)) snprintf(coord, sizeof(coord), "%.3f", cfg.nightLon);
-  page += "<div><label>Longitude (optional, west is negative)</label><input name=lon inputmode=decimal placeholder=\"from timezone\" value=\"";
+  page += "<div><label>Longitude (optional, west is negative)</label><input name=lon type=number step=any min=-180 max=180 placeholder=\"from timezone\" value=\"";
   page += coord;
+  page += "\"></div></div>";
+  char clockVal[8] = "";
+  page += "<p class=sub>Night hours (optional): set both to use fixed times instead of sunset and sunrise. Clear both to follow the sun.</p><div class=split>";
+  if (cfg.nightStartMin < 1440) clockText(cfg.nightStartMin, true, clockVal, sizeof(clockVal));
+  page += "<div><label>Night starts</label><input name=nstart type=time value=\"";
+  page += clockVal;
+  page += "\"></div>";
+  clockVal[0] = 0;
+  if (cfg.nightEndMin < 1440) clockText(cfg.nightEndMin, true, clockVal, sizeof(clockVal));
+  page += "<div><label>Night ends</label><input name=nend type=time value=\"";
+  page += clockVal;
   page += "\"></div></div>";
   page += "<div class=actions><button type=submit>Apply brightness</button>";
   page += "<button class=warn type=submit name=mode value=off>Turn ring off</button></div></form>";
@@ -1016,6 +1085,16 @@ String NetworkService::nightStatus() {
   String s;
   char buf[96];
   time_t sunset, sunrise;
+  uint16_t startMin, endMin;
+  if (nightMode().fixedHours(startMin, endMin)) {
+    char startText[12], endText[12];
+    clockText(startMin, cfg.clock24h, startText, sizeof(startText));
+    clockText(endMin, cfg.clock24h, endText, sizeof(endText));
+    if (!cfg.nightMode) snprintf(buf, sizeof(buf), " Night hours %s to %s.", startText, endText);
+    else if (nightMode().active()) snprintf(buf, sizeof(buf), " <b>On now</b> until %s.", endText);
+    else snprintf(buf, sizeof(buf), " Starts at %s.", startText);
+    return s + buf;
+  }
   if (nightMode().nextTimes(sunset, sunrise)) {
     auto clock = [&](time_t t, char* out, size_t n) {
       struct tm lt;
@@ -1042,16 +1121,34 @@ void NetworkService::handleRing() {
   if (server_.hasArg("night_form")) {
     Settings& cfg = settings();
     cfg.nightMode = server_.hasArg("night");
-    auto coord = [&](const char* name, float limit) {
+    // Blank clears. Anything invalid, or only one of a pair, leaves the saved value as it was.
+    auto coord = [&](const char* name, float limit, float& out) {
       String v = server_.arg(name);
       v.trim();
-      if (v.length() == 0) return (float)NAN;
-      float f = v.toFloat();
-      return fabsf(f) <= limit ? f : (float)NAN;
+      if (v.length() == 0) { out = NAN; return true; }
+      char* end = nullptr;
+      float f = strtof(v.c_str(), &end);
+      if (*end != 0 || !isfinite(f) || fabsf(f) > limit) return false;
+      out = f;
+      return true;
     };
-    cfg.nightLat = coord("lat", 90);
-    cfg.nightLon = coord("lon", 180);
-    if (isnan(cfg.nightLat) || isnan(cfg.nightLon)) cfg.nightLat = cfg.nightLon = NAN;
+    float lat = NAN, lon = NAN;
+    if (coord("lat", 90, lat) && coord("lon", 180, lon) && isnan(lat) == isnan(lon)) {
+      cfg.nightLat = lat;
+      cfg.nightLon = lon;
+    }
+    auto clockArg = [&](const char* name, uint16_t& out) {
+      String v = server_.arg(name);
+      v.trim();
+      if (v.length() == 0) { out = 0xFFFF; return true; }
+      return NightMode::parseClock(v.c_str(), out);
+    };
+    uint16_t startMin = 0xFFFF, endMin = 0xFFFF;
+    if (clockArg("nstart", startMin) && clockArg("nend", endMin) && (startMin < 1440) == (endMin < 1440) &&
+        (startMin >= 1440 || startMin != endMin)) {
+      cfg.nightStartMin = startMin;
+      cfg.nightEndMin = endMin;
+    }
     cfg.save();
     nightMode().refresh();
     if (mqtt_.connected()) publishStates();

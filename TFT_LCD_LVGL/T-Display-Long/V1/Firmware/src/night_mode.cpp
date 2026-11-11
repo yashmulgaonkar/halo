@@ -90,6 +90,27 @@ void NightMode::location(float& lat, float& lon, bool& estimated) const {
   estimated = true;
 }
 
+bool NightMode::fixedHours(uint16_t& startMin, uint16_t& endMin) const {
+  const Settings& cfg = settings();
+  startMin = cfg.nightStartMin;
+  endMin = cfg.nightEndMin;
+  return startMin < 1440 && endMin < 1440 && startMin != endMin;
+}
+
+bool NightMode::parseClock(const char* text, uint16_t& minutes) {
+  if (text == nullptr) return false;
+  int i = 0;
+  int h = 0;
+  while (i < 2 && text[i] >= '0' && text[i] <= '9') h = h * 10 + (text[i++] - '0');
+  if (i == 0 || text[i] != ':') return false;
+  const char* m = text + i + 1;
+  if (m[0] < '0' || m[0] > '9' || m[1] < '0' || m[1] > '9' || m[2] != 0) return false;
+  int mm = (m[0] - '0') * 10 + (m[1] - '0');
+  if (h > 23 || mm > 59) return false;
+  minutes = (uint16_t)(h * 60 + mm);
+  return true;
+}
+
 bool NightMode::nextTimes(time_t& sunset, time_t& sunrise) const {
   time_t now = time(nullptr);
   if (!clockSet(now)) return false;
@@ -135,10 +156,18 @@ void NightMode::loop() {
   if (settings().nightMode) {
     time_t now = time(nullptr);
     if (!clockSet(now)) return;  // keep the current state until NTP has the time
-    float lat, lon;
-    bool estimated;
-    location(lat, lon, estimated);
-    want = !isDaylight(now, lat, lon);
+    uint16_t startMin, endMin;
+    if (fixedHours(startMin, endMin)) {
+      struct tm lt;
+      localtime_r(&now, &lt);
+      uint16_t m = (uint16_t)(lt.tm_hour * 60 + lt.tm_min);
+      want = startMin < endMin ? (m >= startMin && m < endMin) : (m >= startMin || m < endMin);
+    } else {
+      float lat, lon;
+      bool estimated;
+      location(lat, lon, estimated);
+      want = !isDaylight(now, lat, lon);
+    }
   }
   if (want && !active_) enter();
   else if (!want && active_) leave();

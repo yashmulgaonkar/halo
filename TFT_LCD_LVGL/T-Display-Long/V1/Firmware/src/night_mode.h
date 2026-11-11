@@ -3,7 +3,8 @@
 #include <stdint.h>
 #include <time.h>
 
-// Auto Night Mode: between sunset and sunrise the ring drops to 5% and the screen to 15%.
+// Auto Night Mode: between sunset and sunrise (or between two chosen local times) the ring drops
+// to 5% and the screen to 15%.
 // The daytime levels are restored at sunrise unless they were changed during the night.
 class NightMode {
  public:
@@ -15,6 +16,10 @@ class NightMode {
   void location(float& lat, float& lon, bool& estimated) const;
   // Next sunset and sunrise as Unix times; false until the clock is set (or in polar day/night).
   bool nextTimes(time_t& sunset, time_t& sunrise) const;
+  // True when both a start and an end time are set (and differ); they then replace sunset/sunrise.
+  bool fixedHours(uint16_t& startMin, uint16_t& endMin) const;
+  // Strict "H:MM" or "HH:MM" to minutes after midnight.
+  static bool parseClock(const char* text, uint16_t& minutes);
 
   static constexpr uint8_t kRingLevel = 13;       // 5% of 255
   static constexpr uint8_t kBacklightLevel = 38;  // 15% of 255
