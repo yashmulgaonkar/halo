@@ -152,15 +152,15 @@ float clampStep(float value, float lo, float hi) {
 HaloUi& ui() { return g_ui; }
 
 void HaloUi::updateDots() {
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < kPages; i++) {
     if (dots_[i] == nullptr) continue;
     lv_obj_set_style_bg_color(dots_[i], hex(i == page_ ? kText : 0x2C3544), 0);
   }
 }
 
 void HaloUi::showPage(int page, const char* why) {
-  if (page < 0) page = 2;
-  if (page > 2) page = 0;
+  if (page < 0) page = kPages - 1;
+  if (page >= kPages) page = 0;
   // Neighbors slide. Wrapping from the last page to the first would travel
   // through the page in between, so that jump stays a snap.
   int distance = page - page_;
@@ -173,8 +173,8 @@ void HaloUi::showPage(int page, const char* why) {
 }
 
 void HaloUi::swapDataPages() {
-  // Air is screen 1, gases is screen 2. The device page stays out of the rotation.
-  showPage(page_ == 0 ? 1 : 0, "auto-rotate");
+  // Air and gases rotate. The weather and device pages stay out of the rotation.
+  showPage(page_ == kAirPage ? kGasPage : kAirPage, "auto-rotate");
 }
 
 void HaloUi::nextPage() {
@@ -205,7 +205,7 @@ void HaloUi::begin() {
   lv_obj_add_event_cb(tv_, [](lv_event_t* e) {
     HaloUi* self = static_cast<HaloUi*>(lv_event_get_user_data(e));
     lv_obj_t* active = lv_tileview_get_tile_act(self->tv_);
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < kPages; i++) {
       if (self->tiles_[i] == active && self->page_ != i) {
         evlog("PAGE %d->%d by tileview", self->page_, i);
         self->page_ = i;
@@ -217,14 +217,16 @@ void HaloUi::begin() {
 
   // Finger drags are handled as a completed swipe. Live scrolling fights the
   // full-screen refresh, so the tiles do not scroll under the finger.
-  tiles_[0] = lv_tileview_add_tile(tv_, 0, 0, LV_DIR_NONE);
-  tiles_[1] = lv_tileview_add_tile(tv_, 1, 0, LV_DIR_NONE);
-  tiles_[2] = lv_tileview_add_tile(tv_, 2, 0, LV_DIR_NONE);
-  for (int i = 0; i < 3; i++) styleTile(tiles_[i]);
+  for (int i = 0; i < kPages; i++) {
+    tiles_[i] = lv_tileview_add_tile(tv_, i, 0, LV_DIR_NONE);
+    styleTile(tiles_[i]);
+  }
 
-  buildAir(tiles_[0]);
-  buildGases(tiles_[1]);
-  buildDevice(tiles_[2]);
+  buildWeather(tiles_[kWeatherPage]);
+  buildAir(tiles_[kAirPage]);
+  buildGases(tiles_[kGasPage]);
+  buildDevice(tiles_[kPages - 1]);
+  lv_obj_set_tile_id(tv_, kAirPage, 0, LV_ANIM_OFF);
 
   lv_obj_t* dock = lv_obj_create(lv_layer_top());
   lv_obj_set_size(dock, 52, 7);
@@ -235,7 +237,7 @@ void HaloUi::begin() {
   lv_obj_set_flex_flow(dock, LV_FLEX_FLOW_ROW);
   lv_obj_set_flex_align(dock, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
   lv_obj_clear_flag(dock, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < kPages; i++) {
     dots_[i] = lv_obj_create(dock);
     lv_obj_set_size(dots_[i], 7, 7);
     lv_obj_set_style_radius(dots_[i], LV_RADIUS_CIRCLE, 0);
@@ -281,6 +283,12 @@ void HaloUi::buildMenu(lv_obj_t* tile, int slot) {
   lv_img_set_src(mqttIcon_[slot], &kMqttOffIcon);
   lv_obj_clear_flag(mqttIcon_[slot], LV_OBJ_FLAG_CLICKABLE);
   timeLabel_[slot] = text(header, "--:--", &lv_font_montserrat_18, kText);
+}
+
+void HaloUi::buildWeather(lv_obj_t* tile) {
+  lv_obj_set_flex_align(tile, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  buildMenu(tile, 2);
+  weatherPage_.build(tile);
 }
 
 void HaloUi::buildAir(lv_obj_t* tile) {
@@ -415,6 +423,41 @@ void HaloUi::buildGases(lv_obj_t* tile) {
 
 void HaloUi::buildDevice(lv_obj_t* tile) {
   text(tile, "DEVICE", &lv_font_montserrat_14, kMuted);
+
+  // Temperature unit: two buttons that behave as a radio group.
+  lv_obj_t* units = card(tile, 78);
+  lv_obj_set_flex_flow(units, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(units, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_row(units, 6, 0);
+  text(units, "TEMPERATURE UNIT", &lv_font_montserrat_12, kMuted);
+  lv_obj_t* unitRow = lv_obj_create(units);
+  lv_obj_set_width(unitRow, lv_pct(100));
+  lv_obj_set_height(unitRow, 36);
+  lv_obj_set_style_bg_opa(unitRow, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(unitRow, 0, 0);
+  lv_obj_set_style_pad_all(unitRow, 0, 0);
+  lv_obj_set_flex_flow(unitRow, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(unitRow, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_clear_flag(unitRow, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+  const char* unitNames[2] = {"\xC2\xB0" "F", "\xC2\xB0" "C"};
+  const uint8_t unitIds[2] = {TEMP_F, TEMP_C};
+  for (int i = 0; i < 2; i++) {
+    lv_obj_t* btn = lv_obj_create(unitRow);
+    lv_obj_set_size(btn, 66, 34);
+    lv_obj_set_style_radius(btn, 17, 0);
+    lv_obj_set_style_border_width(btn, 0, 0);
+    lv_obj_set_style_pad_all(btn, 0, 0);
+    lv_obj_set_style_shadow_width(btn, 0, 0);
+    lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(btn, HaloUi::onUnitTap, LV_EVENT_CLICKED, (void*)(intptr_t)unitIds[i]);
+    lv_obj_t* mark = text(btn, unitNames[i], &lv_font_montserrat_18, kText);
+    lv_obj_center(mark);
+    lv_obj_clear_flag(mark, LV_OBJ_FLAG_CLICKABLE);
+    unitBtn_[i] = btn;
+  }
+  updateUnitButtons();
+
   lv_obj_t* body = card(tile, 430);
   lv_obj_set_flex_flow(body, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_row(body, 8, 0);
@@ -442,7 +485,7 @@ void HaloUi::refreshClock(const UiStatus& status) {
       snprintf(buf, sizeof(buf), "%d:%02d%s", hour, local.tm_min, local.tm_hour >= 12 ? "PM" : "AM");
     }
   }
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < 3; i++) {
     if (timeLabel_[i] == nullptr) continue;
     lv_label_set_text(timeLabel_[i], buf);
     lv_obj_set_style_img_recolor(wifiIcon_[i], hex(status.wifi ? kGood : kBad), 0);
@@ -575,6 +618,34 @@ void HaloUi::refresh(const UiStatus& status) {
                         r.senPresent ? "ok" : "missing",
                         r.bmePresent ? "ok" : "missing", mics);
   if (biasEdit_ >= 0) showBiasValue();
+}
+
+void HaloUi::updateUnitButtons() {
+  const uint8_t unit = settings().tempUnit;
+  const uint8_t ids[2] = {TEMP_F, TEMP_C};
+  for (int i = 0; i < 2; i++) {
+    if (unitBtn_[i] == nullptr) continue;
+    bool on = unit == ids[i];
+    lv_obj_set_style_bg_color(unitBtn_[i], hex(on ? kGood : 0x2C3544), 0);
+    lv_obj_set_style_bg_opa(unitBtn_[i], LV_OPA_COVER, 0);
+    lv_obj_t* mark = lv_obj_get_child(unitBtn_[i], 0);
+    if (mark != nullptr) lv_obj_set_style_text_color(mark, hex(on ? 0x04140C : kText), 0);
+  }
+}
+
+void HaloUi::setUnit(uint8_t unit) {
+  Settings& cfg = settings();
+  if (cfg.tempUnit == unit) return;
+  cfg.tempUnit = unit;
+  cfg.save();
+  evlog("UNIT set to %s", unit == TEMP_C ? "C" : "F");
+  updateUnitButtons();
+  network().publishTelemetry();  // keeps the Home Assistant select in step
+}
+
+void HaloUi::onUnitTap(lv_event_t* e) {
+  if (touchDragged()) return;
+  ui().setUnit((uint8_t)(intptr_t)lv_event_get_user_data(e));
 }
 
 void HaloUi::watchTap(lv_obj_t* obj, int id) {
@@ -719,6 +790,7 @@ void HaloUi::loop(const UiStatus& status) {
   bool linkChanged = status.wifi != lastWifi_ || status.mqtt != lastMqtt_;
   if (now - lastClockMs_ >= 1000 || linkChanged) {
     refreshClock(status);
+    weatherPage_.refresh(status.tempUnit, status.clock24h, status.ip);
     lastClockMs_ = now;
     lastWifi_ = status.wifi;
     lastMqtt_ = status.mqtt;
@@ -734,7 +806,7 @@ void HaloUi::loop(const UiStatus& status) {
   uint32_t intervalMs = (uint32_t)cfg.pageIntervalS * 1000UL;
   if (!cfg.pageRotation || cfg.pageIntervalS == 0) {
     if (!heldMain_) {
-      if (page_ != 0) showPage(0, "hold-main");
+      if (page_ != kAirPage) showPage(kAirPage, "hold-main");
       heldMain_ = true;
     }
   } else {

@@ -14,6 +14,7 @@
 #include "sensor_hub.h"
 #include "settings.h"
 #include "touch_in.h"
+#include "weather_service.h"
 
 namespace {
 uint32_t bootDownAt = 0;
@@ -46,6 +47,7 @@ void setup() {
   displayPump();
   sensors().begin();
   network().begin();
+  weather().begin();
   pinMode(PIN_BOOT, INPUT_PULLUP);
   displayPump();
 }

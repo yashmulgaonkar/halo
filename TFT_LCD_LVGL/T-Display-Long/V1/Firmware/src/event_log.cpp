@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <lvgl.h>
+
 #include "halo_version.h"
 #include "touch_in.h"
 
@@ -32,6 +34,12 @@ bool g_saveNow = false;
 uint32_t g_lastSaveMs = 0;
 uint32_t g_lastHeapMs = 0;
 uint32_t g_heapLines = 0;
+
+unsigned lvglUsedPct() {
+  lv_mem_monitor_t m;
+  lv_mem_monitor(&m);
+  return m.used_pct;
+}
 
 const char* resetName(esp_reset_reason_t r) {
   switch (r) {
@@ -145,9 +153,9 @@ void evlogTick() {
     // Every fifth line goes into the ring; the rest only echo to serial.
     bool store = (g_heapLines % 5) == 0;
     char line[120];
-    snprintf(line, sizeof(line), "HEAP free=%u min=%u big=%u stack=%u touch c=%lu s=%lu g=%lu k=%lu", (unsigned)ESP.getFreeHeap(),
+    snprintf(line, sizeof(line), "HEAP free=%u min=%u big=%u stack=%u lvgl=%u%% int=%u touch c=%lu s=%lu g=%lu k=%lu", (unsigned)ESP.getFreeHeap(),
              (unsigned)ESP.getMinFreeHeap(), (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT),
-             (unsigned)uxTaskGetStackHighWaterMark(nullptr), (unsigned long)t.contacts, (unsigned long)t.swipes,
+             (unsigned)uxTaskGetStackHighWaterMark(nullptr), (unsigned)lvglUsedPct(), (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL), (unsigned long)t.contacts, (unsigned long)t.swipes,
              (unsigned long)t.ghosts, (unsigned long)t.stuck);
     if (store) evlog("%s", line);
     else evlogTrace("%s", line);

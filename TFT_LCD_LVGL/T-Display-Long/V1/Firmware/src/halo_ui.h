@@ -5,6 +5,7 @@
 #include <lvgl.h>
 
 #include "readings.h"
+#include "weather_page.h"
 
 struct UiStatus {
   const Readings* readings;
@@ -26,6 +27,7 @@ class HaloUi {
 
  private:
   void buildMenu(lv_obj_t* tile, int slot);
+  void buildWeather(lv_obj_t* tile);
   void buildAir(lv_obj_t* tile);
   void buildGases(lv_obj_t* tile);
   void buildDevice(lv_obj_t* tile);
@@ -39,15 +41,24 @@ class HaloUi {
   void stepBias(int dir);
   void showBiasValue();
   void watchTap(lv_obj_t* obj, int id);
+  void setUnit(uint8_t unit);
+  void updateUnitButtons();
+  static void onUnitTap(lv_event_t* e);
   static void onTileTap(lv_event_t* e);
   static void onBiasStep(lv_event_t* e);
   static void onBiasClose(lv_event_t* e);
 
   lv_obj_t* tv_ = nullptr;
-  lv_obj_t* tiles_[3] = {};
-  lv_obj_t* dots_[3] = {};
+  // Page order, left to right. Air stays the home page.
+  static constexpr int kPages = 4;
+  static constexpr int kWeatherPage = 0;
+  static constexpr int kAirPage = 1;
+  static constexpr int kGasPage = 2;
+  lv_obj_t* tiles_[kPages] = {};
+  lv_obj_t* dots_[kPages] = {};
+  WeatherPage weatherPage_;
   uint32_t biasOpenMs_ = 0;
-  int page_ = 0;
+  int page_ = kAirPage;
   uint32_t lastClockMs_ = 0;
   uint32_t lastReadingMs_ = 0;
   uint32_t lastAutoMs_ = 0;
@@ -56,9 +67,9 @@ class HaloUi {
   bool lastMqtt_ = false;
   uint8_t lastUnit_ = 255;
 
-  lv_obj_t* timeLabel_[2] = {};
-  lv_obj_t* wifiIcon_[2] = {};
-  lv_obj_t* mqttIcon_[2] = {};
+  lv_obj_t* timeLabel_[3] = {};
+  lv_obj_t* wifiIcon_[3] = {};
+  lv_obj_t* mqttIcon_[3] = {};
   lv_obj_t* aqiValue_ = nullptr;
   lv_obj_t* aqiCat_ = nullptr;
   lv_obj_t* aqiRail_ = nullptr;
@@ -79,6 +90,7 @@ class HaloUi {
   lv_obj_t* gasValue_[7] = {};
   lv_obj_t* gasPip_[7] = {};
   lv_obj_t* devBody_ = nullptr;
+  lv_obj_t* unitBtn_[2] = {};  // [0] = F, [1] = C
   lv_obj_t* biasShade_ = nullptr;
   lv_obj_t* biasTitle_ = nullptr;
   lv_obj_t* biasValue_ = nullptr;

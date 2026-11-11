@@ -32,6 +32,7 @@ struct Settings {
   bool nightMode;
   float nightLat;  // NAN = estimate from the timezone
   float nightLon;
+  char place[48];  // "City, Region" from the lookup; the weather screen shows the city. Empty = use the timezone name
   uint16_t nightStartMin;  // minutes after local midnight; 0xFFFF = follow sunset/sunrise
   uint16_t nightEndMin;
 
