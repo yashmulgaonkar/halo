@@ -57,6 +57,8 @@ void RingLight::suspend(bool suspended) { suspended_ = suspended; }
 void RingLight::setPower(bool on) {
   power_ = on;
   holdOff_ = !on;
+  // Turning the light off hands the colour back to the air quality.
+  if (!on) customColor_ = false;
   dirty_ = true;
   cleared_ = false;
 }
@@ -82,10 +84,13 @@ void RingLight::showAir(uint8_t r, uint8_t g, uint8_t b) {
     cleared_ = false;
     dirty_ = true;
   }
-  if (effect_ != RingEffect::None) {
-    effect_ = RingEffect::None;
-    dirty_ = true;
-  }
+  // An effect chosen by the user keeps running. Pulse, Scan and Twinkle take the air
+  // quality colour, so the ring still shows it. Rainbow and Color Wipe use their own.
+  if (!customColor_) setColor(r, g, b);
+}
+
+void RingLight::setUserColor(uint8_t r, uint8_t g, uint8_t b) {
+  customColor_ = true;
   setColor(r, g, b);
 }
 
