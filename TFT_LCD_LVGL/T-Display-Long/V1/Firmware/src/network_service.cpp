@@ -1089,6 +1089,11 @@ void NetworkService::sendSetup() {
   page += "<div><label>MQTT user</label><input name=mqtt_user value=\"" + htmlEscape(cfg.mqttUser) + "\"></div>";
   page += "<div><label>MQTT password</label><input name=mqtt_pass type=password placeholder=unchanged autocomplete=new-password></div>";
   page += "</div><label>Timezone</label><input name=tz value=\"" + htmlEscape(cfg.tz) + "\">";
+  page += "<input type=hidden name=power_form value=1>";
+  page += "<label class=check><input type=checkbox name=battery value=1";
+  if (cfg.batteryFitted) page += " checked";
+  page += ">Battery fitted</label>";
+  page += "<p class=sub>Leave off when HALO runs from USB only. On keeps the board's battery connected and charging.</p>";
   page += "<div class=actions><button type=submit>Save and restart</button></div></form>";
   page += "<h2>RING</h2>";
   appendRingForm(page);
@@ -1389,6 +1394,7 @@ void NetworkService::handleSave() {
     copyField(cfg.mqttPass, sizeof(cfg.mqttPass), server_.arg("mqtt_pass"));
   }
   if (server_.hasArg("tz") && server_.arg("tz").length() > 0) copyField(cfg.tz, sizeof(cfg.tz), server_.arg("tz"));
+  if (server_.hasArg("power_form")) cfg.batteryFitted = server_.hasArg("battery");
   cfg.save();
   String page;
   page.reserve(2500);
