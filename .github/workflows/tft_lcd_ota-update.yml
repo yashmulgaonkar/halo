@@ -232,7 +232,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip release]')
     needs:
       - get-version
       - build-firmware
@@ -259,7 +259,7 @@ jobs:
   create-lvgl-release:
     name: Create LVGL GitHub Release
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip release]')
     needs:
       - get-lvgl-version
       - build-lvgl
@@ -287,7 +287,7 @@ jobs:
   publish:
     name: Publish to GitHub Pages
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip release]')
     needs:
       - get-version
       - get-lvgl-version
