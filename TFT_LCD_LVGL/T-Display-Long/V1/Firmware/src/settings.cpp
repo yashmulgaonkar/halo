@@ -32,6 +32,7 @@ void Settings::defaults() {
   no2Offset = 0.0f;
   co2Asc = false;
   startupBlink = true;
+  batteryFitted = false;
   backlight = 255;
   historyEnabled = true;
   historyIntervalS = 60;
@@ -85,6 +86,7 @@ void Settings::load() {
   gasBias[6] = g_prefs.getFloat("gb6", gasBias[6]);
   co2Asc = g_prefs.getBool("asc", co2Asc);
   startupBlink = g_prefs.getBool("blink", startupBlink);
+  batteryFitted = g_prefs.getBool("bat", batteryFitted);
   backlight = g_prefs.getUChar("bl", backlight);
   historyEnabled = g_prefs.getBool("hist", historyEnabled);
   historyIntervalS = g_prefs.getUShort("hint", historyIntervalS);
@@ -127,6 +129,7 @@ void Settings::save() const {
   g_prefs.putFloat("gb6", gasBias[6]);
   g_prefs.putBool("asc", co2Asc);
   g_prefs.putBool("blink", startupBlink);
+  g_prefs.putBool("bat", batteryFitted);
   g_prefs.putUChar("bl", backlight);
   g_prefs.putBool("hist", historyEnabled);
   g_prefs.putUShort("hint", historyIntervalS);

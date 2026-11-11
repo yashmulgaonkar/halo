@@ -23,6 +23,7 @@ struct Settings {
   float gasBias[7];
   bool co2Asc;
   bool startupBlink;
+  bool batteryFitted;  // SY6970: keep the battery path and charging on
   uint8_t backlight;
   bool historyEnabled;
   uint16_t historyIntervalS;
