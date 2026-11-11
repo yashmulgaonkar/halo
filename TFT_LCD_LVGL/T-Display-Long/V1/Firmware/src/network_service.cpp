@@ -991,7 +991,7 @@ void NetworkService::appendRingForm(String& page) {
   page += "<label class=check><input type=checkbox name=night value=1";
   if (cfg.nightMode) page += " checked";
   page += ">Auto Night Mode</label>";
-  page += "<p class=sub>Sunset to sunrise: ring at 5%, screen at 15%. Daytime levels come back at sunrise.";
+  page += "<p class=sub>";
   page += nightStatus();
   page += "</p><div class=split>";
   char coord[16] = "";
