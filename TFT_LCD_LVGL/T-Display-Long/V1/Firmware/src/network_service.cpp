@@ -16,6 +16,7 @@
 #include "aqi.h"
 #include "backlight.h"
 #include "display_port.h"
+#include "event_log.h"
 #include "halo_version.h"
 #include "night_mode.h"
 #include "ring_light.h"
@@ -396,6 +397,11 @@ void NetworkService::begin() {
   server_.on("/save", HTTP_POST, [this]() { handleSave(); });
   server_.on("/ring", HTTP_POST, [this]() { handleRing(); });
   server_.on("/api/state", HTTP_GET, [this]() { handleApi(); });
+  server_.on("/api/log", HTTP_GET, [this]() {
+    String out;
+    evlogDump(out);
+    server_.send(200, "text/plain; charset=utf-8", out);
+  });
   server_.on("/update", HTTP_POST, [this]() { handleUpdate(); });
   server_.on("/reboot", HTTP_POST, [this]() {
     server_.send(200, "text/html", "<p>Restarting.</p>");
@@ -452,6 +458,7 @@ void NetworkService::onStaReady() {
 }
 
 void NetworkService::connectMqtt() {
+  EvScope scope("mqtt-connect", 500);
   if (!mqttConfigured() || !wifiConnected()) return;
   const Settings& cfg = settings();
   mqtt_.setServer(cfg.mqttHost, cfg.mqttPort);
@@ -480,6 +487,7 @@ void NetworkService::connectMqtt() {
 }
 
 void NetworkService::publishDiscovery() {
+  EvScope scope("mqtt-discovery", 800);
   for (const SensorEnt& ent : kSensors) {
     JsonDocument doc;
     doc["name"] = ent.name;
@@ -775,6 +783,7 @@ void NetworkService::publishDiscovery() {
 }
 
 void NetworkService::publishStates(bool force) {
+  EvScope scope("mqtt-states", 500);
   const Readings& r = sensors().latest();
   bool wifi = wifiConnected();
   char topic[80];
@@ -1405,6 +1414,7 @@ void NetworkService::sendUpdatePage(const char* heading, const char* message) {
 }
 
 void NetworkService::refreshLatest() {
+  EvScope scope("update-check", 500);
   if (!clockReady()) {
     if (!updateKnown_) copyNote(updateNote_, sizeof(updateNote_), "Waiting for the clock before checking the site.");
     return;
@@ -1456,6 +1466,7 @@ void NetworkService::refreshLatest() {
 }
 
 void NetworkService::installFirmware() {
+  EvScope scope("install", 500);
   if (updating_ || !wifiConnected()) return;
   updating_ = true;
   refreshLatest();

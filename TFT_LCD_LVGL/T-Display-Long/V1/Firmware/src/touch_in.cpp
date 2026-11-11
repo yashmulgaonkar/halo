@@ -5,6 +5,7 @@
 #include <lvgl.h>
 
 #include "board_pins.h"
+#include "event_log.h"
 
 namespace {
 uint8_t g_addr = 0;
@@ -23,11 +24,34 @@ int g_candY = 0;
 uint8_t g_stable = 0;
 volatile bool g_irqSeen = false;
 uint32_t g_irqMs = 0;
+uint32_t g_contactMs = 0;
+uint32_t g_samples = 0;
+bool g_heldLogged = false;
+TouchStats g_stats;
 constexpr int kSwipePx = 36;
 constexpr int kStablePx = 24;
 constexpr int kJumpPx = 70;
 constexpr uint8_t kNeedStable = 3;
 constexpr uint32_t kIrqFreshMs = 120;
+// A press that does not move for this long is not a finger. A phantom contact
+// was seen sitting at one spot for the whole run and, because a held contact
+// ignores any jump away from it, it also blocked every real touch.
+constexpr uint32_t kStuckMs = 3000;
+constexpr int kDeadPx = 30;
+constexpr uint32_t kDeadClearMs = 2000;
+bool g_dead = false;
+bool g_stuckPending = false;
+int g_deadX = 0;
+int g_deadY = 0;
+uint32_t g_deadSeenMs = 0;
+
+bool inDeadZone(int x, int y) {
+  int dx = x - g_deadX;
+  int dy = y - g_deadY;
+  if (dx < 0) dx = -dx;
+  if (dy < 0) dy = -dy;
+  return dx <= kDeadPx && dy <= kDeadPx;
+}
 
 void IRAM_ATTR onTouchIrq() { g_irqSeen = true; }
 
@@ -91,12 +115,28 @@ void holdPoint(lv_indev_data_t* data, bool pressed) {
 }
 
 void releaseContact() {
-  if (g_tracking) noteSwipe();
+  if (g_tracking) {
+    int before = g_swipe;
+    noteSwipe();
+    g_stats.contacts++;
+    if (g_swipe != 0 && g_swipe != before) g_stats.swipes++;
+    evlog("TOUCH end %lums n=%lu dx=%d dy=%d swipe=%d", (unsigned long)(millis() - g_contactMs), (unsigned long)g_samples,
+          g_lastX - g_startX, g_lastY - g_startY, g_swipe);
+  } else if (g_stable > 0) {
+    g_stats.ghosts++;  // some reads, but never a steady contact
+  }
   g_tracking = false;
   g_stable = 0;
+  g_heldLogged = false;
 }
 
 void readCb(lv_indev_drv_t*, lv_indev_data_t* data) {
+  // The ignored spot is forgotten once nothing has been seen inside it for a
+  // while, so a real finger there works again after the phantom goes away.
+  if (g_dead && millis() - g_deadSeenMs > kDeadClearMs) {
+    g_dead = false;
+    evlog("TOUCH dead spot %d,%d cleared", g_deadX, g_deadY);
+  }
   // Keep reading through a press. The chip only pulses IRQ, and a gap between
   // pulses used to look like a lift before three samples could agree.
   if (!g_tracking && !contactHint()) {
@@ -108,6 +148,13 @@ void readCb(lv_indev_drv_t*, lv_indev_data_t* data) {
   int y = 0;
   if (!readPoint(x, y)) {
     releaseContact();
+    holdPoint(data, false);
+    return;
+  }
+  if (g_dead && inDeadZone(x, y)) {
+    g_deadSeenMs = millis();
+    g_tracking = false;
+    g_stable = 0;
     holdPoint(data, false);
     return;
   }
@@ -134,6 +181,8 @@ void readCb(lv_indev_drv_t*, lv_indev_data_t* data) {
       return;
     }
     g_tracking = true;
+    g_contactMs = millis();
+    g_samples = 0;
     g_dragged = false;
     // Measure the swipe from where the finger landed.
     g_startX = g_runX;
@@ -150,11 +199,30 @@ void readCb(lv_indev_drv_t*, lv_indev_data_t* data) {
   }
   g_lastX = x;
   g_lastY = y;
+  g_samples++;
+  if (!g_heldLogged && millis() - g_contactMs > 4000) {
+    g_heldLogged = true;
+    evlog("TOUCH held %lums x=%d y=%d start=%d,%d", (unsigned long)(millis() - g_contactMs), x, y, g_startX, g_startY);
+  }
   int dx = x - g_startX;
   int dy = y - g_startY;
   if (dx < 0) dx = -dx;
   if (dy < 0) dy = -dy;
   if (dx > 14 || dy > 14) g_dragged = true;
+  if (!g_dragged && millis() - g_contactMs > kStuckMs) {
+    g_dead = true;
+    g_deadX = x;
+    g_deadY = y;
+    g_deadSeenMs = millis();
+    g_stats.stuck++;
+    g_stuckPending = true;
+    evlog("TOUCH stuck %lums at %d,%d, ignoring that spot", (unsigned long)(millis() - g_contactMs), x, y);
+    g_tracking = false;
+    g_stable = 0;
+    g_heldLogged = false;
+    holdPoint(data, false);
+    return;
+  }
   g_lastActivity = millis();
   data->state = LV_INDEV_STATE_PR;
   data->point.x = x;
@@ -171,6 +239,14 @@ int touchTakeSwipe() {
 }
 
 bool touchDragged() { return g_dragged; }
+
+bool touchTakeStuck() {
+  bool pending = g_stuckPending;
+  g_stuckPending = false;
+  return pending;
+}
+
+TouchStats touchStats() { return g_stats; }
 
 uint32_t touchLastActivityMs() { return g_lastActivity; }
 

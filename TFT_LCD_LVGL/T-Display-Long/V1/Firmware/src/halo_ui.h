@@ -32,7 +32,7 @@ class HaloUi {
   void refresh(const UiStatus& status);
   void refreshClock(const UiStatus& status);
   void updateDots();
-  void showPage(int page);
+  void showPage(int page, const char* why = "?");
   void swapDataPages();
   void openBias(int id);
   void closeBias();
@@ -46,6 +46,7 @@ class HaloUi {
   lv_obj_t* tv_ = nullptr;
   lv_obj_t* tiles_[3] = {};
   lv_obj_t* dots_[3] = {};
+  uint32_t biasOpenMs_ = 0;
   int page_ = 0;
   uint32_t lastClockMs_ = 0;
   uint32_t lastReadingMs_ = 0;
