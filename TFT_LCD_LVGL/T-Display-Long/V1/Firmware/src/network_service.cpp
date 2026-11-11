@@ -761,17 +761,21 @@ void NetworkService::publishStates(bool force) {
       }
     }
     if (!send) continue;
-    if (strcmp(ent.key, "pm25") == 0) pm25Sent = true;
     snprintf(topic, sizeof(topic), "%s/sensor/%s", root_, ent.key);
+    bool published;
     if (!ok) {
-      mqtt_.publish(topic, "None", true);
+      published = mqtt_.publish(topic, "None", true);
     } else {
       snprintf(value, sizeof(value), "%.*f", ent.decimals, number);
-      mqtt_.publish(topic, value, true);
+      published = mqtt_.publish(topic, value, true);
     }
-    sentAny[i] = true;
-    sentOk[i] = ok;
-    sentValue[i] = number;
+    // Only remember what actually went out, so a failed publish is retried on the next tick.
+    if (published) {
+      if (strcmp(ent.key, "pm25") == 0) pm25Sent = true;
+      sentAny[i] = true;
+      sentOk[i] = ok;
+      sentValue[i] = number;
+    }
     displayPump();
   }
   snprintf(topic, sizeof(topic), "%s/text/voc_quality", root_);
