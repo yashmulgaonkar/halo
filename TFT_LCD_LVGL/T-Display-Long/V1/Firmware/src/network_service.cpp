@@ -22,6 +22,8 @@
 #include "ring_light.h"
 #include "sensor_hub.h"
 #include "settings.h"
+#include "tls_lock.h"
+#include "weather_service.h"
 
 namespace {
 
@@ -1112,6 +1114,13 @@ void NetworkService::appendRingForm(String& page) {
   page += "<p class=sub>";
   page += nightStatus();
   page += "</p><div class=split>";
+  page += "</div><label>City, State (sets the location for the weather screen)</label>";
+  if (cfg.place[0]) {
+    page += "<p class=sub>Weather location now: ";
+    page += htmlEscape(cfg.place);
+    page += ". To change it, type a city and state.</p>";
+  }
+  page += "<input name=place placeholder=\"for example Foster City, CA\" maxlength=40><div class=split>";
   char coord[16] = "";
   if (!isnan(cfg.nightLat)) snprintf(coord, sizeof(coord), "%.3f", cfg.nightLat);
   page += "<div><label>Latitude (optional)</label><input name=lat type=number step=any min=-90 max=90 placeholder=\"from timezone\" value=\"";
@@ -1193,10 +1202,24 @@ void NetworkService::handleRing() {
       return true;
     };
     float lat = NAN, lon = NAN;
-    if (coord("lat", 90, lat) && coord("lon", 180, lon) && isnan(lat) == isnan(lon)) {
+    String place = server_.arg("place");
+    place.trim();
+    char placeLabel[48] = "";
+    float oldLat = cfg.nightLat, oldLon = cfg.nightLon;
+    if (place.length() > 0 && WeatherService::geocode(place.c_str(), lat, lon, placeLabel, sizeof(placeLabel))) {
       cfg.nightLat = lat;
       cfg.nightLon = lon;
+      // Kept in full, "Foster City, California", so the portal can show which one was found.
+      strlcpy(cfg.place, placeLabel, sizeof(cfg.place));
+      evlog("LOCATION set from the portal: %s %.3f,%.3f", placeLabel, lat, lon);
+    } else if (coord("lat", 90, lat) && coord("lon", 180, lon) && isnan(lat) == isnan(lon)) {
+      cfg.nightLat = lat;
+      cfg.nightLon = lon;
+      // Typed coordinates no longer match the saved city name.
+      bool same = !isnan(lat) && !isnan(oldLat) && fabsf(lat - oldLat) < 0.0005f && fabsf(lon - oldLon) < 0.0005f;
+      if (!same) cfg.place[0] = 0;
     }
+    weather().requestRefresh();
     auto clockArg = [&](const char* name, uint16_t& out) {
       String v = server_.arg(name);
       v.trim();
@@ -1419,6 +1442,8 @@ void NetworkService::refreshLatest() {
     if (!updateKnown_) copyNote(updateNote_, sizeof(updateNote_), "Waiting for the clock before checking the site.");
     return;
   }
+  TlsGuard tls(15000);  // the weather fetch may be using TLS
+  if (!tls.ok()) return;
   char url[128];
   snprintf(url, sizeof(url), "%s?t=%lu", kVersionUrl, (unsigned long)millis());
   WiFiClientSecure client;
@@ -1468,6 +1493,11 @@ void NetworkService::refreshLatest() {
 void NetworkService::installFirmware() {
   EvScope scope("install", 500);
   if (updating_ || !wifiConnected()) return;
+  TlsGuard tls(20000);  // keeps the weather fetch from starting a handshake mid-download
+  if (!tls.ok()) {
+    copyNote(updateNote_, sizeof(updateNote_), "Busy fetching weather. Try again in a moment.");
+    return;
+  }
   updating_ = true;
   refreshLatest();
   if (!updateKnown_ || cmpVersion(latestVersion_, HALO_FW_VERSION) <= 0) {
@@ -1582,6 +1612,8 @@ void NetworkService::handleApi() {
     doc["voc"] = r.voc;
     doc["voc_quality"] = r.vocQuality;
   }
+  doc["weather_state"] = (int)weather().state();
+  doc["weather_age_s"] = weather().ageMs() == UINT32_MAX ? -1 : (int)(weather().ageMs() / 1000UL);
   String body;
   serializeJson(doc, body);
   server_.send(200, "application/json", body);

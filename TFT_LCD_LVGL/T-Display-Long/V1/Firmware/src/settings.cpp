@@ -41,6 +41,7 @@ void Settings::defaults() {
   nightMode = false;
   nightLat = NAN;
   nightLon = NAN;
+  place[0] = 0;
   nightStartMin = 0xFFFF;
   nightEndMin = 0xFFFF;
 }
@@ -93,6 +94,7 @@ void Settings::load() {
   nightMode = g_prefs.getBool("night", nightMode);
   nightLat = g_prefs.getFloat("nLat", nightLat);
   nightLon = g_prefs.getFloat("nLon", nightLon);
+  g_prefs.getString("wplace", place, sizeof(place));
   nightStartMin = g_prefs.getUShort("nStart", nightStartMin);
   nightEndMin = g_prefs.getUShort("nEnd", nightEndMin);
   g_prefs.end();
@@ -134,6 +136,7 @@ void Settings::save() const {
   g_prefs.putBool("night", nightMode);
   g_prefs.putFloat("nLat", nightLat);
   g_prefs.putFloat("nLon", nightLon);
+  g_prefs.putString("wplace", place);
   g_prefs.putUShort("nStart", nightStartMin);
   g_prefs.putUShort("nEnd", nightEndMin);
   g_prefs.end();
