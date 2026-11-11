@@ -1030,7 +1030,7 @@ void NetworkService::handleCmd(const char* cmd, const char* body) {
         if (doc["state"].is<const char*>()) ring().setPower(strcmp(doc["state"], "ON") == 0);
         if (doc["brightness"].is<int>()) ring().setBrightness((uint8_t)doc["brightness"].as<int>());
         if (doc["color"].is<JsonObject>()) {
-          ring().setColor(doc["color"]["r"] | 0, doc["color"]["g"] | 0, doc["color"]["b"] | 0);
+          ring().setUserColor(doc["color"]["r"] | 0, doc["color"]["g"] | 0, doc["color"]["b"] | 0);
         }
         if (doc["effect"].is<const char*>()) ring().setEffect(doc["effect"]);
         if (ring().power()) ring().consumePureBlueAsWhite();
@@ -1258,7 +1258,7 @@ void NetworkService::handleRing() {
     }
     if (ring().brightness() == 0) ring().setBrightness(160);
     ring().setEffect("None");
-    ring().setColor(r, g, b);
+    ring().setUserColor(r, g, b);
     ring().setPower(true);
   }
   if (mqtt_.connected()) publishRing();
@@ -1613,6 +1613,12 @@ void NetworkService::handleApi() {
     doc["voc_quality"] = r.vocQuality;
   }
   doc["weather_state"] = (int)weather().state();
+  doc["ring_on"] = ring().power();
+  doc["ring_effect"] = ring().effectName();
+  char ringRgb[16];
+  snprintf(ringRgb, sizeof(ringRgb), "%u,%u,%u", ring().red(), ring().green(), ring().blue());
+  doc["ring_rgb"] = ringRgb;
+  doc["ring_custom"] = ring().customColor();
   doc["weather_age_s"] = weather().ageMs() == UINT32_MAX ? -1 : (int)(weather().ageMs() / 1000UL);
   String body;
   serializeJson(doc, body);

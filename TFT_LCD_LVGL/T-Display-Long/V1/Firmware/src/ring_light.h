@@ -14,7 +14,11 @@ class RingLight {
   void setPower(bool on);
   void setBrightness(uint8_t brightness);
   void setColor(uint8_t r, uint8_t g, uint8_t b);
+  // The colour the air quality asks for. Ignored while the user has picked a colour.
   void showAir(uint8_t r, uint8_t g, uint8_t b);
+  // A colour chosen from Home Assistant or the portal. It stays until the light is turned off.
+  void setUserColor(uint8_t r, uint8_t g, uint8_t b);
+  bool customColor() const { return customColor_; }
   void setEffect(const char* name);
   bool consumePureBlueAsWhite();
 
@@ -59,6 +63,7 @@ class RingLight {
   bool wifiUp_ = false;
   bool primed_ = false;
   bool holdOff_ = false;
+  bool customColor_ = false;
   bool suspended_ = false;
   bool cleared_ = true;
   bool dirty_ = true;
