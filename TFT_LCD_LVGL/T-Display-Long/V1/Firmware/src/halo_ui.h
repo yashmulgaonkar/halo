@@ -15,6 +15,7 @@ struct UiStatus {
   bool clock24h;
   uint8_t tempUnit;
   const char* ip;
+  const char* hostname;
   uint32_t uptimeSec;
 };
 

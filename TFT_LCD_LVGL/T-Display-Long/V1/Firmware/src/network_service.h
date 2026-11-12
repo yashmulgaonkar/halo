@@ -15,6 +15,7 @@ class NetworkService {
   bool mqttConnected();
   bool mqttConfigured() const;
   const char* ip() const { return ip_; }
+  const char* hostname() const { return hostname_; }
   bool takeReboot();
   void publishTelemetry();
   void forgetWifi();

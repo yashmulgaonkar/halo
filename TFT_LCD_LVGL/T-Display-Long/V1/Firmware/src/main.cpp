@@ -99,6 +99,7 @@ void loop() {
   status.clock24h = settings().clock24h;
   status.tempUnit = settings().tempUnit;
   status.ip = network().ip();
+  status.hostname = network().hostname();
   status.uptimeSec = millis() / 1000UL;
   mark = micros();
   ui().loop(status);

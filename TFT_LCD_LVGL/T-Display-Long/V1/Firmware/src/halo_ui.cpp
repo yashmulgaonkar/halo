@@ -611,10 +611,11 @@ void HaloUi::refresh(const UiStatus& status) {
   else if (r.micsPresent) mics = "warming";
 
   lv_label_set_text_fmt(devBody_,
-                        "Firmware  " HALO_FW_VERSION
+                        "Name  %s\nFirmware  " HALO_FW_VERSION
                         "\nWi-Fi  %s\nIP  %s\nMQTT  %s\nUptime  %s\n\n"
                         "SCD40  %s\n%s  %s\nBME280  %s\nMiCS-4514  %s",
-                        status.wifi ? "connected" : "offline", status.ip ? status.ip : "--",
+                        status.hostname ? status.hostname : "--", status.wifi ? "connected" : "offline",
+                        status.ip ? status.ip : "--",
                         status.mqtt ? "connected" : (status.mqttConfigured ? "waiting" : "not set"), uptime,
                         r.scdPresent ? "ok" : "missing", r.senName[0] ? r.senName : "SEN55",
                         r.senPresent ? "ok" : "missing",
