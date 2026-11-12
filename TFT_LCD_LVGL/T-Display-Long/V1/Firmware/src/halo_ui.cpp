@@ -134,7 +134,7 @@ void setReading(lv_obj_t* label, const char* text) {
 }
 
 void placeVoc(lv_obj_t* value, lv_obj_t* word, const char* quality) {
-  bool wide = quality != nullptr && strlen(quality) >= 14;
+  bool wide = quality != nullptr && strlen(quality) >= 13;
   lv_obj_set_style_text_font(word, wide ? &lv_font_montserrat_12 : &lv_font_montserrat_14, 0);
   lv_obj_align(word, LV_ALIGN_LEFT_MID, 6, wide ? 12 : 9);
   // "Very abnormal" is 90px and meets a 28px index. Park that index on the top row.
