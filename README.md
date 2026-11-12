@@ -1,5 +1,12 @@
 ![Halo_v1](assets/Halo_v1.JPG)
 
+<p align="center">
+  <a href="https://buymeacoffee.com/yashmulgaonkar" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 35px;">
+  </a>
+</p>
+
+
 # HALO: The Air Quality Sensor That Smells Trouble Before You Do
 
 Welcome to HALO — your hilariously over-engineered, open-source buddy who sniffs the air so you don’t have to. Designed for folks who care about the air they breathe but also want a sensor with personality, HALO operates on WiFi via ESPHome, which means no creepy cloud subscriptions or hidden fees. It’s just you, HALO, and your dusty air duking it out together.
@@ -9,8 +16,6 @@ Welcome to HALO — your hilariously over-engineered, open-source buddy who snif
 ## Features
 
 HALO is more than a sensor board. The LVGL firmware (the new UI) turns it into a small, self-contained air monitor with its own screen, web page and Home Assistant integration.
-
-> 📷 **Image placeholder:** hero photo of HALO on a desk with the ring lit. Suggested file: `assets/screenshots/hero.jpg`
 
 ### On-device touchscreen
 
@@ -27,8 +32,6 @@ Four pages, one swipe apart. Swipe to move between them, or turn on page rotatio
 
 - An 11-LED ring that follows the worse of AQI and CO₂, with optional effects: Pulse, Rainbow, Scan, Twinkle and Color Wipe. You can also pick your own color from Home Assistant.
 - **Night mode** dims the ring and screen when it gets dark. Choose **Auto** (sunset to sunrise at your location), **Custom** (your own start and end times) or **Off**.
-
-> 📷 **Image placeholder:** the ring in a dark room, in night mode and at full brightness. Suggested file: `assets/screenshots/ring-night.jpg`
 
 ### Web portal
 
@@ -169,22 +172,19 @@ Because life’s too short for bad air and boring gadgets. HALO makes clean air 
 We love tinkerers, dreamers, and anyone who thinks, “You know what HALO really needs? A coffee maker attachment.” That’s why we’ve shared HALO’s software and CAD files with the world. Dive into our GitHub, unleash your inner mad scientist, and share your creations on Discord. Who knows? Your idea might just inspire HALO 2.0.
 
 - **Build Instructions:** [https://github.com/yashmulgaonkar/halo/wiki](https://github.com/yashmulgaonkar/halo/wiki)
-- **Discord:** [HALO Community](https://discord.gg/wjqgUjv8Re)
+
+<div align="center">
+<a href="https://buymeacoffee.com/yashmulgaonkar"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" height="35"></a>
+<br>
+<a href="https://discord.gg/wjqgUjv8Re"><img src="https://cdn.simpleicons.org/discord/5865F2" alt="Discord" height="40" width="40"></a>
+<br><br>
+<strong><a href="https://discord.gg/wjqgUjv8Re">Halo Discord</a></strong> — community help, builds, and troubleshooting
+</div>
 
 ---
 
 <div align="center"><strong>HALO: The sensor you didn’t know you needed — but now can’t live without.</strong></div>
 
 ---
-<p align="center">
-  <a href="https://buymeacoffee.com/yashmulgaonkar" target="_blank">
-    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 35px;">
-  </a>
-</p>
-
----
 
 [![Repo analytics](https://raw.githubusercontent.com/yashmulgaonkar/repo-analytics/main/out/halo/analytics.svg)](https://github.com/yashmulgaonkar/repo-analytics)
-
-![Alt](https://repobeats.axiom.co/api/embed/ac97497b5f4000e2f2d8debed1eb98a3d8f0fbf4.svg "Repobeats analytics image")
-
