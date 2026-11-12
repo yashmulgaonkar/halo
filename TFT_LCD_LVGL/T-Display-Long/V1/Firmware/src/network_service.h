@@ -64,6 +64,7 @@ class NetworkService {
   bool apOn_ = false;
   bool reboot_ = false;
   bool discoverySent_ = false;
+  bool haBirth_ = false;
   bool updateKnown_ = false;
   bool installRequested_ = false;
   bool updating_ = false;

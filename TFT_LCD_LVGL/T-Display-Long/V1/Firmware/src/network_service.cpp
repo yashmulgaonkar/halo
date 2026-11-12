@@ -301,6 +301,9 @@ float deadband(const char* key, float last) {
   return 0;
 }
 
+// Home Assistant's birth/will topic (default discovery prefix).
+constexpr char kHaStatusTopic[] = "homeassistant/status";
+
 // Even below the deadband, re-send anything that has drifted this often so HA converges.
 constexpr uint32_t kResyncMs = 15UL * 60UL * 1000UL;
 
@@ -476,6 +479,9 @@ void NetworkService::connectMqtt() {
     return;
   }
   mqtt_.subscribe(cmdFilter_);
+  // HA publishes "online" here when it starts; resend everything so a broker that lost
+  // its retained messages doesn't leave stable sensors unknown until they next change.
+  mqtt_.subscribe(kHaStatusTopic);
   mqtt_.publish(statusTopic_, "online", true);
   publishDiscovery();
   publishStates(true);
@@ -918,6 +924,11 @@ void NetworkService::onMqtt(char* topic, uint8_t* payload, unsigned int length) 
   unsigned int n = length < sizeof(body) - 1 ? length : sizeof(body) - 1;
   memcpy(body, payload, n);
   body[n] = 0;
+  if (strcmp(topic, kHaStatusTopic) == 0) {
+    // Publish from loop(), not from inside the MQTT callback.
+    if (strcmp(body, "online") == 0) haBirth_ = true;
+    return;
+  }
   const char* marker = strstr(topic, "/cmd/");
   if (marker == nullptr) return;
   handleCmd(marker + 5, body);
@@ -1681,9 +1692,19 @@ void NetworkService::loop() {
           if (mqtt_.publish(topic, batch)) sensors().history().commitBatch();
         }
       }
+      uint32_t now = millis();
+      if (haBirth_) {
+        haBirth_ = false;
+        evlog("MQTT HA online, resent discovery and state");
+        publishDiscovery();
+        publishStates(true);
+        publishRing();
+        publishBacklight();
+        lastDiscoveryMs_ = now;
+        lastStateMs_ = now;
+      }
       if (ring().takeDirty()) publishRing();
       if (backlight().level() != publishedBacklight_) publishBacklight();
-      uint32_t now = millis();
       if (now - lastStateMs_ > 10000) {
         publishStates();
         lastStateMs_ = now;
