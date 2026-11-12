@@ -6,7 +6,61 @@ Welcome to HALO — your hilariously over-engineered, open-source buddy who snif
 
 ---
 
-## Features? Oh, HALO’s Got a Few Good Ones:
+## Features
+
+HALO is more than a sensor board. The LVGL firmware (the new UI) turns it into a small, self-contained air monitor with its own screen, web page and Home Assistant integration.
+
+> 📷 **Image placeholder:** hero photo of HALO on a desk with the ring lit. Suggested file: `assets/screenshots/hero.jpg`
+
+### On-device touchscreen
+
+Four pages, one swipe apart. Swipe to move between them, or turn on page rotation and HALO flips between Air and Gases for you.
+
+- **Weather:** a five-day forecast for the city you choose, from [Open-Meteo](https://open-meteo.com/) (no account or API key).
+- **Air:** air quality index and category with a color that matches how bad the air is, plus CO₂, temperature, humidity, pressure, particles (PM1, PM2.5, PM4, PM10) and VOC index. Long VOC labels wrap instead of overlapping.
+- **Gases:** CO, NO₂, H₂, methane, ethanol, ammonia and NOx, each with a color band. Hold a row to adjust its offset.
+- **Device:** firmware version, network state and which sensors answered on the bus.
+
+> 📷 **Image placeholder:** the four pages side by side. Suggested files: `assets/screenshots/page-weather.jpg`, `page-air.jpg`, `page-gases.jpg`, `page-device.jpg`
+
+### Ring light and night mode
+
+- An 11-LED ring that follows the worse of AQI and CO₂, with optional effects: Pulse, Rainbow, Scan, Twinkle and Color Wipe. You can also pick your own color from Home Assistant.
+- **Night mode** dims the ring and screen when it gets dark. Choose **Auto** (sunset to sunrise at your location), **Custom** (your own start and end times) or **Off**.
+
+> 📷 **Image placeholder:** the ring in a dark room, in night mode and at full brightness. Suggested file: `assets/screenshots/ring-night.jpg`
+
+### Web portal
+
+Open `http://halo-xxxxxx.local/` (or the IP shown on the Device page) on your network. The portal shows live readings that update without reloading the page.
+
+- Live air quality, gases and device status
+- Ring brightness and color, night mode and location
+- Wi-Fi, MQTT and timezone settings
+- One-click firmware update over Wi-Fi
+
+> 📷 **Image placeholder:** a screenshot of the portal on a phone and on a desktop. Suggested file: `assets/screenshots/portal.png`
+
+### Home Assistant
+
+- **MQTT auto-discovery:** HALO shows up as one device with all its sensors, switches, numbers, buttons, the ring light and the display backlight. No YAML needed.
+- **Recovers by itself:** if Home Assistant restarts, HALO resends its entities and values so nothing sits at *unknown*.
+- **Offline history:** while the broker is unreachable, readings are buffered on the device and sent when it reconnects.
+- **Firmware updates from Home Assistant:** install new builds from the device's update entity.
+
+See the wiki guide [Connect HALO to Home Assistant](https://github.com/yashmulgaonkar/halo/wiki/Connect-HALO-to-Home-Assistant).
+
+> 📷 **Image placeholder:** the HALO device page in Home Assistant. Suggested file: `assets/screenshots/home-assistant.png`
+
+### Calibration and offsets
+
+- CO₂ automatic self-calibration, plus a one-tap calibrate-to-420-ppm button
+- SEN55 temperature and humidity offsets, and a fan-clean button
+- Per-gas bias and a display temperature unit (°F, °C or K)
+
+---
+
+## The Quick Pitch: HALO’s Got a Few Good Ones:
 
 - **PM (Particulate Madness):** HALO tracks dust, pollen, and those mysterious floating things in the air. From “small but annoying” (PM2.5) to “call-the-vacuum” (PM10), HALO’s on it.
 - **Sniffs Like a Dog:** HALO detects VOCs, CO₂, and gases like Ammonia, Ethanol, Methane, and Hydrogen. Basically, it’s like having a science lab shoved into a tiny box.
@@ -69,6 +123,10 @@ Plug the USB-C port into the computer. If the installer cannot see the board, ho
 ---
 
 ## Home Assistant Integration: Because HALO Plays Well With Others
+
+**LVGL firmware (new UI):** HALO talks to Home Assistant over MQTT. Follow the wiki guide, [Connect HALO to Home Assistant](https://github.com/yashmulgaonkar/halo/wiki/Connect-HALO-to-Home-Assistant).
+
+**ESPHome firmware (old UI):**
 
 1. Add HALO to Home Assistant using ESPHome.
 2. When prompted, click things like “Adopt” and “Submit.” It’s basically adopting a pet rock, except HALO is useful.
