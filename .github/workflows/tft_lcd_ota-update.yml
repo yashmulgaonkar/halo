@@ -21,6 +21,11 @@ on:
         description: 'Override version tag (leave empty to use Core.yaml)'
         required: false
         default: ''
+      release:
+        description: 'Publish a release and update the installer site (run this from main)'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   get-version:
@@ -232,7 +237,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip release]')
+    if: github.ref == 'refs/heads/main' && ((github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip release]')) || (github.event_name == 'workflow_dispatch' && inputs.release))
     needs:
       - get-version
       - build-firmware
@@ -259,7 +264,7 @@ jobs:
   create-lvgl-release:
     name: Create LVGL GitHub Release
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip release]')
+    if: github.ref == 'refs/heads/main' && ((github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip release]')) || (github.event_name == 'workflow_dispatch' && inputs.release))
     needs:
       - get-lvgl-version
       - build-lvgl
@@ -331,7 +336,7 @@ jobs:
   publish:
     name: Publish to GitHub Pages
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip release]')
+    if: github.ref == 'refs/heads/main' && ((github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip release]')) || (github.event_name == 'workflow_dispatch' && inputs.release))
     needs:
       - get-version
       - get-lvgl-version
