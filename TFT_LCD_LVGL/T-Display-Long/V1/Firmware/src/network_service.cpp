@@ -191,12 +191,19 @@ const char kPortalCss[] =
 void portalOpen(String& page, const char* title, bool live) {
   page += "<!doctype html><html><head><meta charset=utf-8>";
   page += "<meta name=viewport content=\"width=device-width,initial-scale=1\">";
-  if (live) page += "<meta http-equiv=refresh content=15>";
+
   page += "<title>";
   page += title;
   page += "</title><style>";
   page += kPortalCss;
-  page += "</style></head><body><main>";
+  page += "</style>";
+  // Live page: swap in fresh readings every 5 s without reloading, so forms, focus and scroll are untouched.
+  if (live) {
+    page += "<script>setInterval(function(){if(document.hidden)return;fetch('/',{cache:'no-store'}).then(function(r){return r.text()})"
+            ".then(function(t){var d=new DOMParser().parseFromString(t,'text/html');['pills','live'].forEach(function(i){var n=d.getElementById(i),o=document.getElementById(i);"
+            "if(n&&o)o.innerHTML=n.innerHTML})}).catch(function(){})},5000)</script>";
+  }
+  page += "</head><body><main>";
 }
 
 void portalClose(String& page) { page += "</main></body></html>"; }
@@ -1108,35 +1115,69 @@ void NetworkService::sendSetup() {
   page += ">Battery fitted</label>";
   page += "<p class=sub>Leave off when HALO runs from USB only. On keeps the board's battery connected and charging.</p>";
   page += "<div class=actions><button type=submit>Save and restart</button></div></form>";
-  page += "<h2>RING</h2>";
   appendRingForm(page);
   portalClose(page);
   server_.send(200, "text/html", page);
 }
 
 void NetworkService::appendRingForm(String& page) {
+  const Settings& cfg = settings();
+
+  // 1. Ring light: what the LEDs do right now.
   uint8_t bright = ring().brightness();
   if (bright == 0) bright = 160;
-  page += "<form class=panel method=post action=/ring>";
+  page += "<h2 id=ring>HALO</h2><form class=panel method=post action=/ring>";
   page += "<p class=sub>Color follows the worse of AQI and CO2. Brightness stays where you set it.</p>";
   page += "<label>Brightness</label><input name=brightness type=range min=1 max=255 value=\"";
   page += String(bright);
   page += "\">";
-  const Settings& cfg = settings();
+  page += "<div class=actions><button type=submit>Apply brightness</button>";
+  page += "<button class=warn type=submit name=mode value=off>Turn ring off</button></div></form>";
+
+  // 2. Auto night mode: the on/off switch saves by itself, the hours need Save.
+  page += "<h2 id=night>NIGHT MODE</h2><form class=panel method=post action=/ring>";
   page += "<input type=hidden name=night_form value=1>";
-  page += "<label class=check><input type=checkbox name=night value=1";
-  if (cfg.nightMode) page += " checked";
-  page += ">Auto Night Mode</label>";
+  uint16_t fixedStart, fixedEnd;
+  const char* nmode = !cfg.nightMode ? "off" : nightMode().fixedHours(fixedStart, fixedEnd) ? "custom" : "auto";
+  auto radio = [&](const char* value, const char* label) {
+    page += "<label class=check><input type=radio name=nmode value=";
+    page += value;
+    if (strcmp(value, nmode) == 0) page += " checked";
+    if (strcmp(value, "custom") != 0) page += " onchange=\"this.form.submit()\"";
+    page += ">";
+    page += label;
+    page += "</label>";
+  };
+  page += "<p class=sub>Dims the ring and screen at night. Off and Auto save as soon as you pick them.</p>";
+  radio("off", "Off");
+  radio("auto", "Auto night mode: sunset to sunrise at your location");
+  radio("custom", "Custom night mode: your own start and end times (set them below, then Save)");
   page += "<p class=sub>";
   page += nightStatus();
-  page += "</p><div class=split>";
-  page += "</div><label>City, State (sets the location for the weather screen)</label>";
+  page += "</p>";
+  char clockVal[8] = "";
+  page += "<div class=split>";
+  if (cfg.nightStartMin < 1440) clockText(cfg.nightStartMin, true, clockVal, sizeof(clockVal));
+  page += "<div><label>Custom starts</label><input name=nstart type=time value=\"";
+  page += clockVal;
+  page += "\"></div>";
+  clockVal[0] = 0;
+  if (cfg.nightEndMin < 1440) clockText(cfg.nightEndMin, true, clockVal, sizeof(clockVal));
+  page += "<div><label>Custom ends</label><input name=nend type=time value=\"";
+  page += clockVal;
+  page += "\"></div></div>";
+  page += "<div class=actions><button type=submit>Save night mode</button></div></form>";
+
+  // 3. Location: used for sunset and sunrise and for the weather screen.
+  page += "<h2 id=location>LOCATION</h2><form class=panel method=post action=/ring>";
+  page += "<input type=hidden name=loc_form value=1>";
+  page += "<p class=sub>Sets sunset and sunrise for night mode and the weather screen.</p>";
   if (cfg.place[0]) {
-    page += "<p class=sub>Weather location now: ";
+    page += "<p class=sub>Now: ";
     page += htmlEscape(cfg.place);
     page += ". To change it, type a city and state.</p>";
   }
-  page += "<input name=place placeholder=\"for example Foster City, CA\" maxlength=40><div class=split>";
+  page += "<label>City, State</label><input name=place placeholder=\"for example Foster City, CA\" maxlength=40><div class=split>";
   char coord[16] = "";
   if (!isnan(cfg.nightLat)) snprintf(coord, sizeof(coord), "%.3f", cfg.nightLat);
   page += "<div><label>Latitude (optional)</label><input name=lat type=number step=any min=-90 max=90 placeholder=\"from timezone\" value=\"";
@@ -1147,19 +1188,7 @@ void NetworkService::appendRingForm(String& page) {
   page += "<div><label>Longitude (optional, west is negative)</label><input name=lon type=number step=any min=-180 max=180 placeholder=\"from timezone\" value=\"";
   page += coord;
   page += "\"></div></div>";
-  char clockVal[8] = "";
-  page += "<p class=sub>Night hours (optional): set both to use fixed times instead of sunset and sunrise. Clear both to follow the sun.</p><div class=split>";
-  if (cfg.nightStartMin < 1440) clockText(cfg.nightStartMin, true, clockVal, sizeof(clockVal));
-  page += "<div><label>Night starts</label><input name=nstart type=time value=\"";
-  page += clockVal;
-  page += "\"></div>";
-  clockVal[0] = 0;
-  if (cfg.nightEndMin < 1440) clockText(cfg.nightEndMin, true, clockVal, sizeof(clockVal));
-  page += "<div><label>Night ends</label><input name=nend type=time value=\"";
-  page += clockVal;
-  page += "\"></div></div>";
-  page += "<div class=actions><button type=submit>Apply brightness</button>";
-  page += "<button class=warn type=submit name=mode value=off>Turn ring off</button></div></form>";
+  page += "<div class=actions><button type=submit>Save location</button></div></form>";
 }
 
 String NetworkService::nightStatus() {
@@ -1203,9 +1232,10 @@ String NetworkService::nightStatus() {
 }
 
 void NetworkService::handleRing() {
-  if (server_.hasArg("night_form")) {
+  const bool nightForm = server_.hasArg("night_form");
+  const bool locForm = server_.hasArg("loc_form");
+  if (nightForm || locForm) {
     Settings& cfg = settings();
-    cfg.nightMode = server_.hasArg("night");
     // Blank clears. Anything invalid, or only one of a pair, leaves the saved value as it was.
     auto coord = [&](const char* name, float limit, float& out) {
       String v = server_.arg(name);
@@ -1217,36 +1247,48 @@ void NetworkService::handleRing() {
       out = f;
       return true;
     };
-    float lat = NAN, lon = NAN;
-    String place = server_.arg("place");
-    place.trim();
-    char placeLabel[48] = "";
-    float oldLat = cfg.nightLat, oldLon = cfg.nightLon;
-    if (place.length() > 0 && WeatherService::geocode(place.c_str(), lat, lon, placeLabel, sizeof(placeLabel))) {
-      cfg.nightLat = lat;
-      cfg.nightLon = lon;
-      // Kept in full, "Foster City, California", so the portal can show which one was found.
-      strlcpy(cfg.place, placeLabel, sizeof(cfg.place));
-      evlog("LOCATION set from the portal: %s %.3f,%.3f", placeLabel, lat, lon);
-    } else if (coord("lat", 90, lat) && coord("lon", 180, lon) && isnan(lat) == isnan(lon)) {
-      cfg.nightLat = lat;
-      cfg.nightLon = lon;
-      // Typed coordinates no longer match the saved city name.
-      bool same = !isnan(lat) && !isnan(oldLat) && fabsf(lat - oldLat) < 0.0005f && fabsf(lon - oldLon) < 0.0005f;
-      if (!same) cfg.place[0] = 0;
+    if (nightForm) {
+      // Off, Auto (follow the sun) or Custom (fixed hours). Custom needs two valid, different times.
+      String mode = server_.arg("nmode");
+      if (mode == "off") {
+        cfg.nightMode = false;
+      } else if (mode == "auto") {
+        cfg.nightMode = true;
+        cfg.nightStartMin = 0xFFFF;
+        cfg.nightEndMin = 0xFFFF;
+      } else if (mode == "custom") {
+        uint16_t startMin = 0xFFFF, endMin = 0xFFFF;
+        String startText = server_.arg("nstart"), endText = server_.arg("nend");
+        startText.trim();
+        endText.trim();
+        if (NightMode::parseClock(startText.c_str(), startMin) && NightMode::parseClock(endText.c_str(), endMin) &&
+            startMin < 1440 && endMin < 1440 && startMin != endMin) {
+          cfg.nightMode = true;
+          cfg.nightStartMin = startMin;
+          cfg.nightEndMin = endMin;
+        }
+      }
     }
-    weather().requestRefresh();
-    auto clockArg = [&](const char* name, uint16_t& out) {
-      String v = server_.arg(name);
-      v.trim();
-      if (v.length() == 0) { out = 0xFFFF; return true; }
-      return NightMode::parseClock(v.c_str(), out);
-    };
-    uint16_t startMin = 0xFFFF, endMin = 0xFFFF;
-    if (clockArg("nstart", startMin) && clockArg("nend", endMin) && (startMin < 1440) == (endMin < 1440) &&
-        (startMin >= 1440 || startMin != endMin)) {
-      cfg.nightStartMin = startMin;
-      cfg.nightEndMin = endMin;
+    if (locForm) {
+      float lat = NAN, lon = NAN;
+      String place = server_.arg("place");
+      place.trim();
+      char placeLabel[48] = "";
+      float oldLat = cfg.nightLat, oldLon = cfg.nightLon;
+      if (place.length() > 0 && WeatherService::geocode(place.c_str(), lat, lon, placeLabel, sizeof(placeLabel))) {
+        cfg.nightLat = lat;
+        cfg.nightLon = lon;
+        // Kept in full, "Foster City, California", so the portal can show which one was found.
+        strlcpy(cfg.place, placeLabel, sizeof(cfg.place));
+        evlog("LOCATION set from the portal: %s %.3f,%.3f", placeLabel, lat, lon);
+      } else if (coord("lat", 90, lat) && coord("lon", 180, lon) && isnan(lat) == isnan(lon)) {
+        cfg.nightLat = lat;
+        cfg.nightLon = lon;
+        // Typed coordinates no longer match the saved city name.
+        bool same = !isnan(lat) && !isnan(oldLat) && fabsf(lat - oldLat) < 0.0005f && fabsf(lon - oldLon) < 0.0005f;
+        if (!same) cfg.place[0] = 0;
+      }
+      weather().requestRefresh();
     }
     cfg.save();
     nightMode().refresh();
@@ -1278,7 +1320,10 @@ void NetworkService::handleRing() {
     ring().setPower(true);
   }
   if (mqtt_.connected()) publishRing();
-  server_.sendHeader("Location", String(wifiConnected() ? "/" : "/setup"), true);
+  // Land back on the section that was just saved.
+  String back = wifiConnected() ? "/" : "/setup";
+  back += nightForm ? "#night" : locForm ? "#location" : "#ring";
+  server_.sendHeader("Location", back, true);
   server_.send(303, "text/plain", "Updated");
 }
 
@@ -1296,12 +1341,13 @@ void NetworkService::sendStatus() {
   page += HALO_FW_VERSION;
   page += "</p>";
   portalNav(page, false);
-  page += "</div><div class=pills>";
+  page += "</div><div class=pills id=pills>";
   page += wifiConnected() ? "<span class=\"pill on\">Wi-Fi</span>" : "<span class=\"pill off\">Wi-Fi</span>";
   page += mqtt_.connected() ? "<span class=\"pill on\">MQTT</span>" : "<span class=\"pill off\">MQTT</span>";
   page += "</div></header>";
 
   const char* aqiColor = r.aqiOk ? aqiCss(r.aqi, r.aqiEvac) : "#93a0b5";
+  page += "<div id=live>";
   page += "<section class=hero style=\"border-color:";
   page += aqiColor;
   page += "\"><div><div class=k>AIR QUALITY</div><b style=\"color:";
@@ -1404,9 +1450,9 @@ void NetworkService::sendStatus() {
     page += "</p>";
   }
   page += "<form class=actions method=post action=/update onsubmit=\"return confirm('Download the firmware from the site and restart HALO?')\"><button>Update firmware</button></form>";
-  page += "</section><h2>RING</h2>";
+  page += "</section></div>";
   appendRingForm(page);
-  page += "<div class=actions>";
+  page += "<h2>DEVICE ACTIONS</h2><div class=actions>";
   page += "<form class=inline method=post action=/reboot onsubmit=\"return confirm('Restart HALO?')\"><button>Restart</button></form>";
   page += "<form class=inline method=post action=/forget onsubmit=\"return confirm('Forget Wi-Fi and open the setup hotspot?')\"><button class=warn>Forget Wi-Fi</button></form>";
   page += "</div>";
