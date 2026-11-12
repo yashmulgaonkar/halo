@@ -87,6 +87,7 @@ class HaloUi {
   lv_obj_t* pmValue_[4] = {};
   lv_obj_t* vocValue_ = nullptr;
   lv_obj_t* vocWord_ = nullptr;
+  lv_obj_t* vocTag_ = nullptr;
   lv_obj_t* gasValue_[7] = {};
   lv_obj_t* gasPip_[7] = {};
   lv_obj_t* devBody_ = nullptr;

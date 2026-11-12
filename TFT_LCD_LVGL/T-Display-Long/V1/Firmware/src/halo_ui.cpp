@@ -133,13 +133,15 @@ void setReading(lv_obj_t* label, const char* text) {
   lv_obj_set_style_text_font(label, strlen(text) >= 6 ? &lv_font_montserrat_18 : &lv_font_montserrat_28, 0);
 }
 
-void placeVoc(lv_obj_t* value, lv_obj_t* word, const char* quality) {
-  bool wide = quality != nullptr && strlen(quality) >= 13;
-  lv_obj_set_style_text_font(word, wide ? &lv_font_montserrat_12 : &lv_font_montserrat_14, 0);
-  lv_obj_align(word, LV_ALIGN_LEFT_MID, 6, wide ? 12 : 9);
-  // "Very abnormal" is 90px and meets a 28px index. Park that index on the top row.
-  lv_obj_set_style_text_font(value, wide ? &lv_font_montserrat_18 : &lv_font_montserrat_28, 0);
-  lv_obj_align(value, LV_ALIGN_RIGHT_MID, -2, wide ? -10 : 0);
+void placeVoc(lv_obj_t* word, lv_obj_t* tag, const char* quality) {
+  // "Very abnormal" and "Extremely abnormal" break onto two lines so the 28px index keeps its size.
+  char label[32];
+  snprintf(label, sizeof(label), "%s", quality != nullptr ? quality : "--");
+  char* space = strchr(label, ' ');
+  if (space != nullptr) *space = '\n';
+  lv_label_set_text(word, label);
+  lv_obj_align(tag, LV_ALIGN_LEFT_MID, 6, space != nullptr ? -25 : -9);
+  lv_obj_align(word, LV_ALIGN_LEFT_MID, 6, 9);
 }
 
 float clampStep(float value, float lo, float hi) {
@@ -382,10 +384,11 @@ void HaloUi::buildAir(lv_obj_t* tile) {
     lv_obj_align(pmValue_[i], LV_ALIGN_RIGHT_MID, -2, 0);
   }
 
-  lv_obj_t* voc = card(tile, 58);
+  lv_obj_t* voc = card(tile, 76);
   lv_obj_set_style_pad_left(voc, 16, 0);
   vocRail_ = statusRail(voc);
-  pinLeft(text(voc, "VOC INDEX", &lv_font_montserrat_12, kMuted), -9);
+  vocTag_ = text(voc, "VOC IDX", &lv_font_montserrat_12, kMuted);
+  pinLeft(vocTag_, -9);
   vocWord_ = text(voc, "--", &lv_font_montserrat_14, kMuted);
   pinLeft(vocWord_, 9);
   vocValue_ = text(voc, "--", &lv_font_montserrat_28, kText);
@@ -540,8 +543,7 @@ void HaloUi::refresh(const UiStatus& status) {
     }
     snprintf(buf, sizeof(buf), "%.0f", r.voc);
     setReading(vocValue_, buf);
-    lv_label_set_text(vocWord_, r.vocQuality);
-    placeVoc(vocValue_, vocWord_, r.vocQuality);
+    placeVoc(vocWord_, vocTag_, r.vocQuality);
     lv_color_t vocColor = upperBand(r.voc, 150, 250, 400);
     lv_obj_set_style_text_color(vocValue_, vocColor, 0);
     lv_obj_set_style_text_color(vocWord_, vocColor, 0);
